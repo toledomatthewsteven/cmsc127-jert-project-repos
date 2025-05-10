@@ -43,6 +43,13 @@ class MainApplication:
                     self.student_member_view()
                 elif choice == '2':
                     print("Organization view goes here")
+
+                    cursor = self.db_manager.connection.cursor() #dont forget ()
+                    cursor.execute("SHOW TABLES")
+                    for x in cursor:
+                        print(x)
+
+                    print("")
                 elif choice == '0':
                     print("Exiting program...")
                     break

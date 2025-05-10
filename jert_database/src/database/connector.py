@@ -2,6 +2,8 @@ import getpass
 import mysql.connector as mariadb
 from mysql.connector import Error
 
+import database.schemacreator as sc_creator
+
 class JERTDatabaseManager:
     def __init__(self):
         self.connection = None
@@ -51,26 +53,42 @@ class JERTDatabaseManager:
                         
                         # Reconnect to the new database
                         self.connection.close()
-                        return mariadb.connect(
+                        self.connection = mariadb.connect(
                             host=self.credentials['host'],
                             user=self.credentials['user'],
                             password=self.credentials['password'],
                             database=self.credentials['database']
                         )
+
+                        sc_creator.create_member_table(self.connection)
+                        sc_creator.create_student_organization_table(self.connection)
+                        sc_creator.create_fee_table(self.connection)
+                        
+                        #other create tables here?
+
+                        self.connection.commit()
+
+                        return self.connection 
                     except Error as e:
                         print(f"Error creating database: {e}")
                         raise
                 else:
                     print("Database creation aborted")
                     return None
+            
             else: #database found!!! #diva
                 self.connection.close()
-                return mariadb.connect(
+                print("Database recognized!")
+                print(result)
+
+                self.connection = mariadb.connect(
                     host=self.credentials['host'],
                     user=self.credentials['user'],
                     password=self.credentials['password'],
                     database=self.credentials['database']
                 )
+
+                return self.connection
         except Error as e:
             print(f"Database error: {e}")
             self.close_connection()
@@ -84,3 +102,24 @@ class JERTDatabaseManager:
     def get_connection(self): #ala getter? yuh
         return self.connection if (self.connection and self.connection.is_connected()) else (None) 
             #none returned if connection (itself) doesnt exist and it isnt connected :p
+
+
+    #TODO: CREATE SCHEMAS AND SHIT......
+
+    def create_member_table(self):
+        cursor = self.connection.cursor()
+        cursor.execute("""
+            CREATE TABLE member (
+                first_name VARCHAR(15) NOT NULL,
+                middle_name VARCHAR(15),
+                last_name VARCHAR(25) NOT NULL,
+                student_number CHAR(10) PRIMARY KEY NOT NULL,
+                degree_program VARCHAR(30) NOT NULL,
+                gender CHAR(1) NOT NULL,
+                graduation_status BOOLEAN DEFAULT 0,
+                graduation_date DATE
+            )
+            """) # triple quotation marks enclosing a string can help make it readable via multiple lines
+        print("Created member schema in new database!")
+
+    

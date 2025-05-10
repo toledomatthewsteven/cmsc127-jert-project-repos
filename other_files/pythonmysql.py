@@ -50,11 +50,11 @@ create_cursor = mariadb_connection.cursor() ;
 ##############################################################################################################################
 
 ### create tables 
-# create_cursor.execute("CREATE TABLE python_creation_table (COLUMN1 VARCHAR(2), COLUMN2 Int)")
+create_cursor.execute("CREATE TABLE python_creation_table (COLUMN1 VARCHAR(2), COLUMN2 Int)")
 
-# create_cursor.execute("SHOW TABLES")
-# for x in create_cursor:
-#     print(x)
+create_cursor.execute("SHOW TABLES")
+for x in create_cursor:
+    print(x)
 
 #======
 
