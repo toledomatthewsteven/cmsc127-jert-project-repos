@@ -1,3 +1,2 @@
-# mysql-connector-python
-mariadb
-python-dotenv
+mysql-connector-python
+getpass

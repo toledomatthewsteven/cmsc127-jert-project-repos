@@ -2,8 +2,7 @@ import getpass
 import mysql.connector as mariadb #i prefer mysql.connector bcoz... that's what the youtube showed me!!!
 from mysql.connector import Error
 
-def get_db_credentials():
-    """Prompt user for database credentials"""
+def get_db_credentials(): 
     print("\n==================== Database Login ====================")
     user = input("Username (default: root): ") or "root" #default
     password = getpass.getpass("Password: ") #secure password input
