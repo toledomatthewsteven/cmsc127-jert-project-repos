@@ -3,6 +3,7 @@ import mysql.connector as mariadb
 from mysql.connector import Error
 
 import database.schemacreator as sc_creator
+from database.schemacreator import REQUIRED_TABLES
 
 class JERTDatabaseManager:
     def __init__(self):
@@ -83,7 +84,7 @@ class JERTDatabaseManager:
             else: #database found!!! #diva
                 self.connection.close()
                 print("Database recognized!")
-                print(result)
+                # print(result)
 
                 self.connection = mariadb.connect(
                     host=self.credentials['host'],
@@ -91,6 +92,11 @@ class JERTDatabaseManager:
                     password=self.credentials['password'],
                     database=self.credentials['database']
                 )
+
+                if not self.is_the_db_valid(self.connection):
+                    print("!! Database schema validation failed. Please use a valid database or make a new one. !!")
+                    self.connection.close()
+                    return None 
 
                 return self.connection
         except Error as e:
@@ -108,22 +114,57 @@ class JERTDatabaseManager:
             #none returned if connection (itself) doesnt exist and it isnt connected :p
 
 
-    #TODO: CREATE SCHEMAS AND SHIT......
 
-    def create_member_table(self):
-        cursor = self.connection.cursor()
-        cursor.execute("""
-            CREATE TABLE member (
-                first_name VARCHAR(15) NOT NULL,
-                middle_name VARCHAR(15),
-                last_name VARCHAR(25) NOT NULL,
-                student_number CHAR(10) PRIMARY KEY NOT NULL,
-                degree_program VARCHAR(30) NOT NULL,
-                gender CHAR(1) NOT NULL,
-                graduation_status BOOLEAN DEFAULT 0,
-                graduation_date DATE
-            )
-            """) # triple quotation marks enclosing a string can help make it readable via multiple lines
-        print("Created member schema in new database!")
 
-    
+
+    def is_the_db_valid(self, connection): #check if db loaded (that alr exists) has the needed tables/cols
+        cursor = connection.cursor() 
+        try: 
+            # ===============TABLES CHECKING===============
+            cursor.execute("SHOW TABLES") 
+            tables_in_db = cursor.fetchall() # returns tuples [<tablename> , ] of all tables
+
+            # only get the first item in the tuple
+            existing_tables = []
+            for table_tuple in tables_in_db:
+                table_name = table_tuple[0]
+                existing_tables.append(table_name)
+            
+            required_tables = list(REQUIRED_TABLES.keys())
+            missing_tables = []
+
+            for table_name in required_tables:
+                if table_name not in existing_tables:
+                    missing_tables.append(table_name)
+
+            if len(missing_tables) > 0:
+                print("Missing tables: " + ", ".join(missing_tables))
+                return False
+            
+            #===============COLUMNS PER TABLE CHECKING===============
+            for table, required_columns in REQUIRED_TABLES.items():
+                cursor.execute(f"DESCRIBE {table}") #returns tuples AGAIN
+                table_columns_in_table = cursor.fetchall()
+                existing_columns = []
+                for table_column_tuple in table_columns_in_table:
+                    column_name = table_column_tuple[0]
+                    existing_columns.append(column_name)
+                
+                missing_columns = []
+                for col in required_columns:
+                    if col not in existing_columns:
+                        missing_columns.append(col)
+                
+                if missing_columns:
+                    print(f"Table '{table}' missing columns: {', '.join(missing_columns)}")
+                    cursor.close()
+                    return False
+            
+            print("Database entered is valid for use!")
+            cursor.close()
+            return True
+
+        except Error as e:
+            print(f"Error: {e}")
+            cursor.close()
+            return False 

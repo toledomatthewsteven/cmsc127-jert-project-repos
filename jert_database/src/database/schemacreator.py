@@ -4,7 +4,7 @@ def create_member_table(connection):
     cursor = connection.cursor()
     try: 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS member(
+            CREATE TABLE member(
                 first_name varchar(15) NOT NULL,
                 middle_name varchar(15),
                 last_name varchar(25) NOT NULL,
@@ -28,7 +28,7 @@ def create_student_organization_table(connection):
     cursor = connection.cursor()
     try: 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS student_organization(
+            CREATE TABLE student_organization(
             organization_id int PRIMARY KEY AUTO_INCREMENT NOT NULL, 
             org_name varchar(100) UNIQUE NOT NULL,
             org_type varchar(20) NOT NULL,
@@ -49,10 +49,9 @@ def create_student_organization_table(connection):
 def create_fee_table(connection):
 
     cursor = connection.cursor()
-    try: 
-        cursor = connection.cursor()
+    try:  
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS fee(
+            CREATE TABLE fee(
             fee_id int PRIMARY KEY AUTO_INCREMENT,
             amount int  NOT NULL,
             due_date date NOT NULL,
@@ -78,8 +77,7 @@ def create_fee_table(connection):
 
 def create_committee_table(connection):
     cursor = connection.cursor()
-    try: 
-        cursor = connection.cursor()
+    try:  
         cursor.execute("""
             CREATE TABLE committee(
                 committee_name varchar(30) PRIMARY KEY,
@@ -98,8 +96,7 @@ def create_committee_table(connection):
 
 def create_committee_roles_table(connection):
     cursor = connection.cursor()
-    try: 
-        cursor = connection.cursor()
+    try:  
         cursor.execute("""
             CREATE TABLE committee_roles(
                 committee_role varchar(30) NOT NULL,
@@ -120,8 +117,7 @@ def create_committee_roles_table(connection):
 
 def create_membership_table(connection):
     cursor = connection.cursor()
-    try: 
-        cursor = connection.cursor()
+    try:  
         cursor.execute("""
             CREATE TABLE membership(
                 student_number char(10),
@@ -144,8 +140,7 @@ def create_membership_table(connection):
 
 def create_member_committee_table(connection):
     cursor = connection.cursor()
-    try: 
-        cursor = connection.cursor()
+    try:
         cursor.execute("""
             CREATE TABLE member_committee(
                 student_number char(10),
@@ -167,3 +162,61 @@ def create_member_committee_table(connection):
         raise
     finally:
         cursor.close()
+
+#===============================================================
+# dictionary referenced for schema checking existing tables
+REQUIRED_TABLES = {
+    'member': [
+        'first_name',
+        'middle_name',
+        'last_name',
+        'student_number',
+        'degree_program',
+        'gender',
+        'graduation_status',
+        'graduation_date'
+    ],
+    'student_organization': [
+        'organization_id',
+        'org_name',
+        'org_type',
+        'semesters_active',
+        'num_members',
+        'year_established',
+        'abbreviation'
+    ],
+    'fee': [
+        'fee_id',
+        'amount',
+        'due_date',
+        'semester',
+        'academic_year',
+        'payment_date',
+        'payment_status',
+        'late_status',
+        'student_number',
+        'organization_id'
+    ],
+    'committee': [
+        'committee_name',
+        'organization_id'
+    ],
+    'committee_roles': [
+        'committee_role',
+        'committee_name'
+    ],
+    'membership': [
+        'student_number',
+        'organization_id',
+        'batch_year',
+        'join_date'
+    ],
+    'member_committee': [
+        'student_number',
+        'committee_name',
+        'academic_year',
+        'semester',
+        'membership_status',
+        'committee_role'
+    ]
+}
