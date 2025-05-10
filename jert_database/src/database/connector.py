@@ -63,6 +63,10 @@ class JERTDatabaseManager:
                         sc_creator.create_member_table(self.connection)
                         sc_creator.create_student_organization_table(self.connection)
                         sc_creator.create_fee_table(self.connection)
+                        sc_creator.create_committee_table(self.connection)
+                        sc_creator.create_committee_roles_table(self.connection)
+                        sc_creator.create_membership_table(self.connection)
+                        sc_creator.create_member_committee_table(self.connection)
                         
                         #other create tables here?
 

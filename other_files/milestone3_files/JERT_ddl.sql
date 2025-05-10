@@ -36,7 +36,7 @@ CREATE TABLE student_organization(
 -- NULL NOT PAID
 -- boolean is automatically 0 = false, 1 = true
 CREATE TABLE fee(
-    fee_id int AUTO_INCREMENT,
+    fee_id int PRIMARY KEY AUTO_INCREMENT,
     amount int  NOT NULL,
     due_date date NOT NULL,
     semester int  NOT NULL,
@@ -90,6 +90,7 @@ ALTER TABLE membership ADD CONSTRAINT membership_org_fk FOREIGN KEY(organization
 
 -- MEMCOMMITTEEE
 --TODO: change active status from boolean to string ("inactive", active, etc)
+--NOTE: ACTIVE STATUS WAS CHANGED INTO MEMBERSHIP STATUS!!! dont trip!
 
 CREATE TABLE member_committee(
     student_number char(10),
