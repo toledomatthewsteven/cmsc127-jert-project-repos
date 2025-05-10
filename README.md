@@ -1,4 +1,3 @@
 === JERT: CMSC 127 ST13L ===
 
-the "official" repository....
-official???!!!
+#note: no longer needed to create an .env file as the connector asks for user credentials

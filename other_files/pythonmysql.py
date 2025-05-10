@@ -12,8 +12,8 @@
 
 import mysql.connector as mariadb
 
-# mariadb_connection = mariadb.connect(user="root", password="password" ,host = "localhost", port = "3306")
-mariadb_connection = mariadb.connect(user="root", password="password", database = 'test_database', host = "localhost", port = "3306")
+mariadb_connection = mariadb.connect(user="root", password="password" ,host = "localhost", port = "3306")
+# mariadb_connection = mariadb.connect(user="root", password="password", database = 'test_database', host = "localhost", port = "3306")
 #should our project just use the root user LOLLL.... um.... hmm.... 
 create_cursor = mariadb_connection.cursor(); 
     # add as a paramter: dictionary = true "if you want get values returned values in a databse in dicitonary format"
@@ -36,14 +36,14 @@ create_cursor = mariadb_connection.cursor() ;
 ## Show databases
 
 # execute this on its own
-# create_cursor.execute("CREATE DATABASE test_database")
+# create_cursor.execute("CREATE DATABASE 127projectplaceholder")
 
-# execute the ff together:
+# # execute the ff together:
 # create_cursor.execute("SHOW DATABASES")
 
 # for x in create_cursor:
 #     print(x)
-#up til this
+# # up til this
 
 ############################################## EXECUTE COMMANDS AGAINST/RELATING TO TABLES####################################
 # (at this point there should be a databses = "test_database" in your connection)
