@@ -33,10 +33,10 @@ def create_student_organization_table(connection):
             org_name varchar(100) UNIQUE NOT NULL,
             org_type varchar(20) NOT NULL,
             semesters_active int NOT NULL,
-            num_members int NOT NULL,
             year_established year NOT NULL,
             abbreviation varchar(10)
         )""")
+        # MESSAGE: REMOVED THE NUMBER OF MEMBERS ATTRIBUTE... IT DOESNT MATTER TBH.
 
         connection.commit() 
         print("\tStudent Organization table created successfully in new database!")
