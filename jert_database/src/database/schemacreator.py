@@ -181,7 +181,6 @@ REQUIRED_TABLES = {
         'org_name',
         'org_type',
         'semesters_active',
-        'num_members',
         'year_established',
         'abbreviation'
     ],

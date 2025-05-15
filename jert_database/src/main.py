@@ -21,7 +21,7 @@ class MainApplication:
         
         choice = input("Enter a choice: ")
         if choice == '1':
-            student_number = input("Enter student number (202X-XXXXX): ")
+            student_number = input("Enter student number (20XX-XXXXX): ")
             # add/perform database operations using self.db_manager.get_connection() ,, maybe in a different class?
 
 

@@ -10,15 +10,68 @@ class JERTDatabaseManager:
         self.connection = None
         self.credentials = None
 
-    def get_db_credentials(self): 
+    def userExtractor(self, adminConnection, username):
+        cursor = adminConnection.cursor()
+        cursor.execute("SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = %s)", (username,))
+        exists = cursor.fetchone()[0] #result of the "exists" query is 0 or 1
+        cursor.close()
+        return bool(exists)
+
+    def createJERTuser(self, adminConnection, username, password):
+        cursor = adminConnection.cursor()
+        try:
+            cursor.execute(f"CREATE USER %s@'localhost' IDENTIFIED BY %s", (username, password))
+            cursor.execute(f"GRANT ALL PRIVILEGES ON *.* TO %s@'localhost' WITH GRANT OPTION", (username,))
+            # all priviledges lmao whatever!... rn this user is granted priviledge to ALL ... tables , databases, and stuff... 
+            # but we only want them to be working with that one databse they'll use.... but the flow of our program rn is ... check if user exists first,,
+            # should the flow be.... create table / see if table exists via admin... then create user with access to only that?
+            adminConnection.commit()
+            print(f"User '{username}' created successfully.")
+        except Error as e:
+            print(f"Failed to create user: {e}")
+        finally:
+            cursor.close()
+
+    def adminConnectionGetter(self):
+        print("\n========== Root Login (Required) ==========")
+        password = getpass.getpass("Password for root user: ")
+        try:
+            return mariadb.connect(
+                host="localhost",
+                user="root",
+                password=password
+            )
+        except Error as e:
+            print(f"Root connection failed: {e}")
+            return None
+
+    def doesUserExistCheck(self, username):
+        adminConnection = self.adminConnectionGetter()
+        if not adminConnection:
+            print("Cannot proceed without admin access.")
+            exit(1) #straight up exit the program
+        
+        if not self.userExtractor(adminConnection, username): #if user does not exist
+            print(f"User '{username}' does not exist.")
+            jertPassword = getpass.getpass(f"Set password for about-to-be-created user '{username}': ")
+            self.createJERTuser(adminConnection, username, jertPassword)
+        adminConnection.close()
+        #if jertOrganizationManager exists, then allat is skipped (except for admin)
+
+    def get_db_credentials(self):
+        username = "jertOrganizationManager"
+        self.doesUserExistCheck(username) #ensure the user exists (or create if needed)
+
         print("\n==================== Database Login ====================")
         self.credentials = {
-            'user': input("Username (default: root): ") or "root",
-            'password': getpass.getpass("Password: "),
-            'host': input("Host (default: localhost): ") or "localhost",
-            'database': self.validate_db_name()
+            'user': username,
+            'password': getpass.getpass(f"Password for '{username}': "), 
+            'database': self.validate_db_name() #TODO: see if we need to change this later on to have a fixed database. 
+                #but rn it's easier to test if we have this prompt
         }
         return self.credentials
+
+    # ===================
 
     def validate_db_name(self): 
         while True:
@@ -33,7 +86,7 @@ class JERTDatabaseManager:
             
         try: 
             self.connection = mariadb.connect( #blank database connection, just connect it lol
-                host=self.credentials['host'],
+                host= 'localhost',
                 user=self.credentials['user'],
                 password=self.credentials['password']
             )
@@ -55,7 +108,7 @@ class JERTDatabaseManager:
                         # Reconnect to the new database
                         self.connection.close()
                         self.connection = mariadb.connect(
-                            host=self.credentials['host'],
+                            host= 'localhost',
                             user=self.credentials['user'],
                             password=self.credentials['password'],
                             database=self.credentials['database']
@@ -87,7 +140,7 @@ class JERTDatabaseManager:
                 # print(result)
 
                 self.connection = mariadb.connect(
-                    host=self.credentials['host'],
+                    host='localhost',
                     user=self.credentials['user'],
                     password=self.credentials['password'],
                     database=self.credentials['database']
