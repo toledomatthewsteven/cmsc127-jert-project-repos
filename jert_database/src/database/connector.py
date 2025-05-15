@@ -17,23 +17,21 @@ class JERTDatabaseManager:
         cursor.close()
         return bool(exists)
 
-    def createJERTuser(self, adminConnection, username, password):
+    def createJERTuser(self, adminConnection, username, password, databaseName):
         cursor = adminConnection.cursor()
         try:
-            cursor.execute(f"CREATE USER %s@'localhost' IDENTIFIED BY %s", (username, password))
-            cursor.execute(f"GRANT ALL PRIVILEGES ON *.* TO %s@'localhost' WITH GRANT OPTION", (username,))
-            # all priviledges lmao whatever!... rn this user is granted priviledge to ALL ... tables , databases, and stuff... 
-            # but we only want them to be working with that one databse they'll use.... but the flow of our program rn is ... check if user exists first,,
-            # should the flow be.... create table / see if table exists via admin... then create user with access to only that?
+            cursor.execute("CREATE USER %s@'localhost' IDENTIFIED BY %s", (username, password))
+            cursor.execute(f"GRANT ALL PRIVILEGES ON {databaseName}.* TO %s@'localhost'", (username,))  # grant access only to specific database
             adminConnection.commit()
-            print(f"User '{username}' created successfully.")
+            print(f"User '{username}' created successfully with access to database '{databaseName}'.")
         except Error as e:
             print(f"Failed to create user: {e}")
         finally:
             cursor.close()
 
     def adminConnectionGetter(self):
-        print("\n========== Root Login (Required) ==========")
+        print("\n========== Root & jertOrganizationManager Login ==========")
+        print("Note: Root user will not be used for the JERT Database. \n\tIt is only for checking if the JERT user exists.")
         password = getpass.getpass("Password for root user: ")
         try:
             return mariadb.connect(
@@ -45,70 +43,69 @@ class JERTDatabaseManager:
             print(f"Root connection failed: {e}")
             return None
 
-    def doesUserExistCheck(self, username):
+    def doesUserExistCheck(self, username, databaseName):
         adminConnection = self.adminConnectionGetter()
         if not adminConnection:
             print("Cannot proceed without admin access.")
-            exit(1) #straight up exit the program
-        
-        if not self.userExtractor(adminConnection, username): #if user does not exist
+            exit(1)  # straight up exit the program
+
+        if not self.userExtractor(adminConnection, username):  # if user does not exist
             print(f"User '{username}' does not exist.")
             jertPassword = getpass.getpass(f"Set password for about-to-be-created user '{username}': ")
-            self.createJERTuser(adminConnection, username, jertPassword)
+            self.createJERTuser(adminConnection, username, jertPassword, databaseName)
         adminConnection.close()
-        #if jertOrganizationManager exists, then allat is skipped (except for admin)
 
-    def get_db_credentials(self):
+    def sqlGetCredentials(self):
         username = "jertOrganizationManager"
-        self.doesUserExistCheck(username) #ensure the user exists (or create if needed)
-
         print("\n==================== Database Login ====================")
+        databaseName = self.validate_db_name()  # prompt early so user permissions can be scoped
+
+        self.doesUserExistCheck(username, databaseName)  # ensure the user exists (or create if needed) #this function calls admin access within it
+
         self.credentials = {
             'user': username,
-            'password': getpass.getpass(f"Password for '{username}': "), 
-            'database': self.validate_db_name() #TODO: see if we need to change this later on to have a fixed database. 
-                #but rn it's easier to test if we have this prompt
+            'password': getpass.getpass(f"Password for '{username}': "),
+            'database': databaseName
         }
         return self.credentials
 
     # ===================
 
-    def validate_db_name(self): 
+    def validate_db_name(self):
         while True:
-            db_name = input("Database name (required): ").strip()
-            if db_name:
-                return db_name
+            databaseName = input("Database name (required): ").strip()
+            if databaseName:
+                return databaseName
             print("Error: Database name cannot be empty. Please try again.")
 
     def connect(self):
         if not self.credentials:
-            self.get_db_credentials()
-            
-        try: 
-            self.connection = mariadb.connect( #blank database connection, just connect it lol
-                host= 'localhost',
+            self.sqlGetCredentials()
+
+        try:
+            self.connection = mariadb.connect(  # connect without specifying db first
+                host='localhost',
                 user=self.credentials['user'],
                 password=self.credentials['password']
             )
-            
+
             cursor = self.connection.cursor()
             cursor.execute(f"SHOW DATABASES LIKE '{self.credentials['database']}'")
 
-            result = cursor.fetchone() 
-            if not result: #no database returned
+            result = cursor.fetchone()
+            if not result:  # no database returned
                 print(f"Database '{self.credentials['database']}' not found")
                 create = input("Create this database? (y/n): ").lower()
-            
+
                 if create == 'y':
                     try:
                         cursor.execute(f"CREATE DATABASE {self.credentials['database']}")
                         self.connection.commit()
                         print(f"Database '{self.credentials['database']}' created successfully")
-                        
-                        # Reconnect to the new database
+
                         self.connection.close()
                         self.connection = mariadb.connect(
-                            host= 'localhost',
+                            host='localhost',
                             user=self.credentials['user'],
                             password=self.credentials['password'],
                             database=self.credentials['database']
@@ -121,23 +118,21 @@ class JERTDatabaseManager:
                         sc_creator.create_committee_roles_table(self.connection)
                         sc_creator.create_membership_table(self.connection)
                         sc_creator.create_member_committee_table(self.connection)
-                        
-                        #other create tables here?
+                        # other create tables here?
 
                         self.connection.commit()
 
-                        return self.connection 
+                        return self.connection
                     except Error as e:
                         print(f"Error creating database: {e}")
                         raise
                 else:
                     print("Database creation aborted")
                     return None
-            
-            else: #database found!!! #diva
+
+            else:  # database found
                 self.connection.close()
                 print("Database recognized!")
-                # print(result)
 
                 self.connection = mariadb.connect(
                     host='localhost',
@@ -149,13 +144,16 @@ class JERTDatabaseManager:
                 if not self.is_the_db_valid(self.connection):
                     print("!! Database schema validation failed. Please use a valid database or make a new one. !!")
                     self.connection.close()
-                    return None 
+                    return None
 
                 return self.connection
         except Error as e:
             print(f"Database error: {e}")
             self.close_connection()
             return False
+
+
+
 
     def close_connection(self): 
         if self.connection and self.connection.is_connected(): # close whatever database connection!
