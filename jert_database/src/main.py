@@ -4,6 +4,7 @@ class MainApplication:
     def __init__(self):
         self.db_manager = JERTDatabaseManager()
 
+
     def main_menu(self):
         print("\n====================MAIN MENU====================")
         print("[1] Student/Member View")
@@ -69,9 +70,9 @@ class MainApplication:
                 if organization: #found!
                     print("found the org to inspect. now, CALL INSPECTION FUNCTIONS!!! THE MOTHERLODE!!!!")
 
-                    self.inspect_student_organization_view(organization['organization_id']) #since organization returned a dictionary...
+                    self.inspect_student_organization_view(organization['organization_id'], org_name) #since organization returned a dictionary...
 
-                    print("org found!")
+                    # print("org found!")
                 else:
                     print(f"\nOrganization '{org_name}' not found.")
                 
@@ -86,10 +87,155 @@ class MainApplication:
             else:
                 print("Invalid choice. Please try again.")
 
-    def inspect_student_organization_view(self, orgID):
-        print("by here, we should have the org id")
-        print(orgID)
+# =====================================================
 
+    def inspect_student_organization_view(self, orgID, org_name):
+        # print("by here, we should have the org id")
+        # print(orgID) #trust we have it talaga
+        #we should probs move this into a different file/class #oop but im lazy asf
+        while True:
+            print(F"\n====================INSPECTING: '{org_name}'====================")
+            print("[1] Member Management")
+            print("[2] Fee Management") 
+            print("[3] Generate a Report")  
+            print("[0] Back to main menu")
+            print("")
+
+            choice = input("Enter a choice: ")
+
+            if choice == '1':
+                self.member_management_menu(orgID, org_name)
+                continue
+            
+            if choice == '2' : 
+                self.fees_management_menu(orgID, org_name)
+                continue
+
+            elif choice == '3':
+                self.report_generation_menu(orgID, org_name)
+                continue 
+            
+            elif choice == '0':
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+    def member_management_menu(self, orgID, org_name):
+        # we can probably separate these into classes lol #OOP ... this main.py long as fuck right now.. but im lazy asf
+        while True:
+            print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
+            print("[1] Add a Member")
+            print("[2] Update a Member's Information.") 
+            print("[3] Delete a Member's Record") 
+            print("[4] Search for a Member")  
+            print("[5] Track a Member's Membership Status (is this the right label)")   
+            print("[0] Back to main menu")
+            print("")
+
+            choice = input("Enter a choice: ")
+
+            if choice == '1':
+                print("1")
+                continue
+            
+            if choice == '2' : 
+                print("2")
+                continue
+
+            elif choice == '3':
+                print("3")
+                continue 
+
+            elif choice == '4':
+                print("4")
+                continue 
+
+            elif choice == '5':
+                print("5")
+                continue 
+            
+            elif choice == '0':
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+    def fees_management_menu(self, orgID, org_name):
+        while True:
+            print(F"\n====================FEES MANAGEMENT: '{org_name}'====================")
+            print("[1] idk what to put here but... the project scoresheet called for invoicing and payment...")    
+            print("[0] Back to main menu")
+            print("")
+
+            choice = input("Enter a choice: ")
+
+            if choice == '1':
+                print("1")
+                continue 
+            
+            elif choice == '0':
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+    def report_generation_menu(self, orgID, org_name):
+        while True:
+            print(F"\n====================REPORT GENERATOR: '{org_name}'====================")
+            print("[1] Filter and View All Members of the Organization")
+            print("[2] View Members of the Organization with Unpaid Membership Fees for a Given Sem/AY")
+            # print("[3] View a Member's Unpaid Membership Fees for All Organizations") #this dont belong here
+            print("[3] View All Executive Committee Members of the Organization for a Given AY")
+            print("[4] View All Presidents (or Any Other Role) of the Organization for a Given AY in Reverse Chronological Order")
+            print("[5] View All Late Payments Made by All Members of the Organization for a Given Sem/AY")
+            print("[6] View the Percentage of Active vs. Inactive Members of the Organization for the Last <n> Semesters")
+            print("[7] View All Alumni Members of the Organization as of a Given Date")
+            print("[8] View the Total Amount of Paid and Unpaid Fees of the Organization as of a Given Date")
+            print("[9] View the Member(s) of the Organization with the Highest Debt for a Given Sem/AY")
+            print("[0] Back to main menu")
+            
+
+            choice = input("Enter a choice: ")
+
+            if choice == '1':
+                print("1")
+                continue 
+
+            if choice == '2':
+                print("2")
+                continue 
+
+            if choice == '3':
+                print("3")
+                continue 
+
+            if choice == '4':
+                print("4")
+                continue 
+
+            if choice == '5':
+                print("5")
+                continue 
+
+            if choice == '6':
+                print("6")
+                continue 
+
+            if choice == '7':
+                print("7")
+                continue 
+
+            if choice == '8':
+                print("8")
+                continue 
+
+            if choice == '9':
+                print("9")
+                continue 
+
+            
+            elif choice == '0':
+                break
+            else:
+                print("Invalid choice. Please try again.")
 
 # ======= HELPER FUNCTIONS ======
 
