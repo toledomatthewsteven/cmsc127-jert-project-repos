@@ -78,6 +78,9 @@ class JERTDatabaseManager:
         else :
             jertPasswordCredential = getpass.getpass(f"Password for '{username}': ")
 
+
+            #TODO: i wanna add like an innate password validator for jertPasswordCredential so that it auto.... rejects you lol BUT IM TIRED RN (did nothing all day kind of)
+
         print("\n==================== Database Access ====================")
         databaseName = self.get_db_name()  # prompt early so user permissions can be scoped
 
