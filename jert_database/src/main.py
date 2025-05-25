@@ -264,20 +264,39 @@ class MainApplication:
     def fees_management_menu(self, orgID, org_name):
         while True:
             print(F"\n====================FEES MANAGEMENT: '{org_name}'====================")
-            print("[1] idk what to put here but... the project scoresheet called for invoicing and payment...")    
+            print("[1] Create an Invoice")    
+            print("[2] Pay a Fee")    
+            print("[3] Show all fees")  
             print("[0] Back to main menu")
             print("")
 
             choice = input("Enter a choice: ")
 
             if choice == '1':
-                print("1")
+                self.create_newFeeRecord(orgID)
                 continue 
             
+            if choice == '2':
+                print("2")
+                continue
+
+            if choice == '3':
+                fees = self.db_manager.get_fees(orgID)
+                
+                if not fees:
+                    print("\nNo fees yet.")
+                else:
+                    print("\nAll Fees:")
+                    for fee in fees:
+                        print(f" + {fee}")
+                continue
+                continue
             elif choice == '0':
                 break
             else:
                 print("Invalid choice. Please try again.")
+
+
 
 # ============================================== COMMITTEE MANAGEMENT ===============================================
 # ============================================== COMMITTEE MANAGEMENT ===============================================
@@ -700,11 +719,96 @@ class MainApplication:
 
             #  gotta put code here to insert into the database (for member table, for member-org relationship, for member-committee)
             # actually ,jk. not here. back to the original function! 
-            
+        
         except KeyboardInterrupt:
             print("\nRegistration cancelled.")
             return None
 
+    def create_newFeeRecord(self, orgID):
+        print("\n=== CREATING NEW STUDENT RECORD ===")
+
+        try: 
+            while True: # First name (required)
+                amount = input("Amount: ").strip()
+                if amount and amount.isdigit():
+                    amount = int(amount)
+                    if amount < 0:
+                        print("Error: Amount cannot be negative")
+                    else:
+                        break
+                elif amount and  not amount.isdigit():
+                    print("Error: Amount must be an digit")
+                else:
+                    print("Error: Amount cannot be empty.")
+
+            while True:
+                due_date_input = input("Due date (YYYY-MM-DD): ").strip()
+                try:
+                    from datetime import datetime
+                    datetime.strptime(due_date_input, "%Y-%m-%d")
+                    due_date = due_date_input
+                    break
+                except ValueError:
+                    print("Error: Please enter a valid date in YYYY-MM-DD format.")
+            
+            while True: # First name (required)
+                semester = input("Semester (1 or 2): ").strip()
+                if semester and semester.isdigit():
+                    semester = int(semester)
+                    if semester < 0 and semester > 2:
+                        print("Error: Semesters can only be 1 or 2")
+                    else:
+                        break
+                elif semester and not semester.isdigit():
+                    print("Error: Semester must be an digit")
+                else:
+                    print("Error: Semester cannot be empty.")
+
+            while True: #TODO: Make Academic Year checking
+                academic_year = input("Academic Year (YYYY-YYYY): ").strip()
+                if len(academic_year) == 9 and academic_year[4] == '-':
+                    prefix = academic_year[:4]
+                    suffix = academic_year[5:]
+                    if prefix.isdigit() and suffix.isdigit():
+                        break
+                print("Error: Academic Year must be in the format XXXX-XXXX (where X is a digit).")
+
+
+            while True:  # Student number (XXXX-XXXXX)
+                student_number = input("Student number (XXXX-XXXXX): ").strip()
+                if len(student_number) == 10 and student_number[4] == '-':
+                    prefix = student_number[:4]
+                    suffix = student_number[5:]
+                    if prefix.isdigit() and suffix.isdigit():
+                        if self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, "asd"):
+                            print("ERROR: Student not Found")
+                        else:
+                            break
+                        
+                print("Error: Student number must be in the format XXXX-XXXXX (where X is a digit).")
+
+            # Create a dictionary for the member
+            fee_data = {
+                'amount': amount,
+                'due_date': due_date,
+                'semester': semester,
+                'academic_year': academic_year,
+                'student_number': student_number,
+                'organization_id': orgID
+            }
+
+            print("\n\tMember data collected successfully!") 
+
+            if self.db_manager.register_new_feeRecord(fee_data):
+                print(f"\tSuccessfully registered fee")
+                return None  # return for use
+            else:
+                print("\tFailed to register new fee record.")
+                return None
+            
+        except KeyboardInterrupt:
+            print("\nRegistration cancelled.")
+            return None
 
 # =============================================================
 
@@ -714,7 +818,7 @@ class MainApplication:
             return
         else:
             print("Successfully connected to the database!")
-            
+            print(self)
         try:
             while True:
                 self.main_menu()
