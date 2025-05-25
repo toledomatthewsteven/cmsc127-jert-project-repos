@@ -698,6 +698,38 @@ class JERTDatabaseManager:
             print("Error:", e)
             cursor.close()
             return False
+    
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+
+    def update_existing_committee_log(self, student_number, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
+        cursor = self.connection.cursor()
+        try:
+            # Update only committee_name, committee_role, membership_status for the matching student_number, academic_year, semester
+            sql = """
+                UPDATE member_committee
+                SET committee_name = %s,
+                    committee_role = %s,
+                    membership_status = %s
+                WHERE student_number = %s
+                AND academic_year = %s
+                AND semester = %s
+            """
+            cursor.execute(sql, (assigned_committee, assigned_role, membership_status, student_number, academic_year, semester))
+            self.connection.commit()
+            
+            if cursor.rowcount == 0:
+                print("\tNo matching record found to update.") #not rlly gonna be reached but, just in case.
+                return False
+            return True
+        except Error as e:
+            print(f"Database error when updating committee log: {e}")
+            return False
+        finally:
+            cursor.close()
 
 
     # ============================================ REPORT GENERATORS ============================================
