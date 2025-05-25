@@ -652,11 +652,11 @@ class JERTDatabaseManager:
             return False
         
     
-    # ============================================ DROPPERS =========================
-    # ============================================ DROPPERS =========================
-    # ============================================ DROPPERS =========================
-    # ============================================ DROPPERS =========================
-    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS ============================================
+    # ============================================ DROPPERS ============================================
+    # ============================================ DROPPERS ============================================
+    # ============================================ DROPPERS ============================================
+    # ============================================ DROPPERS ============================================
 
     def drop_organization(self, orgName):
         cursor = self.connection.cursor()
@@ -679,3 +679,43 @@ class JERTDatabaseManager:
             cursor.close()
             return False
 
+
+    # ============================================ REPORT GENERATORS ============================================
+    # ============================================ REPORT GENERATORS ============================================
+    # ============================================ REPORT GENERATORS ============================================
+    # ============================================ REPORT GENERATORS ============================================
+    # ============================================ REPORT GENERATORS ============================================
+
+    def view_and_sort_ByDegreeProgram(self, orgID): 
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    m.degree_program,
+                    m.gender
+                FROM 
+                    member m
+                JOIN 
+                    membership mem ON m.student_number = mem.student_number
+                WHERE 
+                    mem.organization_id = %s
+                ORDER BY 
+                    m.degree_program,
+                    m.last_name,
+                    m.first_name;
+            """, (orgID,))
+            
+            results = cursor.fetchall()  # list of dicts
+            return results
+
+        except Error as e:
+            print(f"Database error when viewing/sorting by degree program: {e}")
+            return None
+
+        finally:
+            cursor.close()
