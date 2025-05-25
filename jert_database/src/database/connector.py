@@ -1,3 +1,4 @@
+import datetime
 import getpass
 import mysql.connector as mariadb
 from mysql.connector import Error
@@ -11,6 +12,7 @@ class JERTDatabaseManager:
         self.credentials = None
     
     def get_db_name(self):
+        print("You must enter a database name to create or use. If you forgot the database name you use, please consult your organization's documentation team.")
         while True:
             databaseName = input("Create/Locate a Database (required): ").strip()
             if databaseName:
@@ -269,6 +271,19 @@ class JERTDatabaseManager:
 
 
     # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+
+    
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
 
     def get_all_organizations(self): 
         cursor = self.connection.cursor(dictionary=True)
@@ -307,6 +322,146 @@ class JERTDatabaseManager:
             
         finally:
             cursor.close()
+
+    
+        
+    def get_or_check_studentNumber_in_Membership(self, student_number, orgID, orgName):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT * FROM membership
+                WHERE student_number = %s AND organization_id = %s
+            """, (student_number, orgID))
+            
+            record = cursor.fetchone()
+            
+            if record:
+                # print(f"Warning: Student '{student_number}' is already a member of organization '{orgName}'.")
+                return True 
+            else:
+                return False 
+            
+        except Error as e:
+            print(f"Database error when checking membership: {e}")
+            return None
+
+        finally:
+            cursor.close()
+
+        
+    def get_student_record_by_studentNumber(self, studentnumberInput): 
+        cursor = self.connection.cursor(dictionary=True)
+        try: 
+            cursor.execute("""
+                SELECT * FROM member
+                WHERE student_number = %s
+            """, (studentnumberInput,))  
+            
+            result = cursor.fetchone() #RETURNS A DICTIONARY
+            cursor.close()
+            return result
+            
+        except Error as e:
+            print(f"Database error when fetching student record by student id: {e}")
+            return None
+            
+        finally:
+            cursor.close()
+
+    def get_committees_by_orgID(self, orgID):
+        cursor = self.connection.cursor(dictionary=True)
+        try: 
+            cursor.execute("""
+                SELECT * FROM committee
+                WHERE organization_id = %s
+            """, (orgID, ))  
+            
+            results = cursor.fetchall()  # fetch all rows as list of dictionaries
+            return results  # return the list of dictionaries
+            
+        except Error as e:
+            print(f"Database error when fetching committees by orgID: {e}")
+            return None
+            
+        finally:
+            cursor.close()
+
+    def get_committees_and_roles_by_orgID(self, orgID):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT c.committee_name, r.committee_role
+                FROM committee c
+                LEFT JOIN committee_roles r ON c.committee_name = r.committee_name
+                WHERE c.organization_id = %s
+            """, (orgID,))
+            
+            results = cursor.fetchall()  # list of dicts with keys 'committee_name', 'committee_role'
+            return results
+
+        except Error as e:
+            print(f"Database error when fetching committees and roles: {e}")
+            return None
+
+        finally:
+            cursor.close()
+
+
+
+    def get_committees_by_orgID_with_roles(self, orgID):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            # Fetch all committees for the given organization
+            cursor.execute("""
+                SELECT * FROM committee
+                WHERE organization_id = %s
+            """, (orgID,))
+            
+            committees = cursor.fetchall()  # list of dicts
+            
+            # If no committees found, return empty list
+            if not committees:
+                return []
+            
+            # Fetch all roles for these committees
+            cursor.execute("""
+                SELECT * FROM committee_roles
+                WHERE committee_name IN (
+                    SELECT committee_name FROM committee WHERE organization_id = %s
+                )
+            """, (orgID,))
+            
+            roles = cursor.fetchall()  # list of dicts
+            
+            # Organize roles by committee_name
+            role_map = {}
+            for role in roles:
+                comm_name = role['committee_name']
+                if comm_name not in role_map:
+                    role_map[comm_name] = []
+                role_map[comm_name].append(role['committee_role'])
+            
+            # Add roles list to each committee dictionary
+            for committee in committees:
+                comm_name = committee['committee_name']
+                committee['roles'] = role_map.get(comm_name, [])
+            
+            return committees  # list of committee dicts with 'roles' key
+
+        except Error as e:
+            print(f"Database error when fetching committees and roles by orgID: {e}")
+            return None
+        
+        finally:
+            cursor.close()
+
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
     
     def register_organization(self, orgDataDictionary): 
         cursor = self.connection.cursor()
@@ -334,11 +489,175 @@ class JERTDatabaseManager:
             return True
             
         except Error as e:
-            print(f"Registration failed: {e}")
+            print(f"\tRegistration failed: {e}")
             self.connection.rollback()
             cursor.close()
             return False
     
+
+    def register_member_under_committee_with_role(self, student_number, orgID, committeeName, roleName, academic_year, semester, membership_status):
+        cursor = self.connection.cursor()
+        try:
+            # Check committee existence for orgID
+            cursor.execute("""
+                SELECT * FROM committee
+                WHERE committee_name = %s AND organization_id = %s
+            """, (committeeName, orgID))
+            committee = cursor.fetchone()
+            if not committee:
+                print(f"Error: Committee '{committeeName}' does not exist under organization ID {orgID}.")
+                return False
+
+            # Check role existence in committee
+            cursor.execute("""
+                SELECT * FROM committee_roles
+                WHERE committee_name = %s AND committee_role = %s
+            """, (committeeName, roleName))
+            role = cursor.fetchone()
+            if not role:
+                print(f"Error: Role '{roleName}' does not exist under committee '{committeeName}'.")
+                return False
+
+            # Insert into member_committee with extra columns
+            cursor.execute("""
+                INSERT INTO member_committee (student_number, committee_name, academic_year, semester, membership_status, committee_role)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (student_number, committeeName, academic_year, semester, membership_status, roleName))
+
+            self.connection.commit()
+            # print(f"Member '{student_number}' registered in committee '{committeeName}' with role '{roleName}' for {academic_year} {semester} ({membership_status}).")
+            return True
+
+        except Error as e:
+            print(f"Database error during member registration under committee and role: {e}")
+            self.connection.rollback()
+            return False
+
+        finally:
+            cursor.close()
+    
+    def register_membership(self, student_number, organization_id, batch_year, join_date=None):
+        cursor = self.connection.cursor()
+        try:
+            sql = """
+                INSERT INTO membership (student_number, organization_id, batch_year, join_date)
+                VALUES (%s, %s, %s, %s)
+            """
+            if join_date is None:
+                join_date = datetime.date.today()  # default to today's date
+            values = (student_number, organization_id, batch_year, join_date)
+            cursor.execute(sql, values)
+            self.connection.commit()
+            cursor.close()
+            return True
+        except Error as e:
+            print(f"Failed to register membership: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+
+
+
+
+    
+    def register_committee_with_roles(self, committeeData): 
+        # committeeData = {
+        #     'committee_name': str,
+        #     'organization_id': int,
+        #     'roles': list of str
+        # } 
+
+        cursor = self.connection.cursor()
+        try:
+            
+            cursor.execute(
+                "SELECT COUNT(*) FROM committee WHERE committee_name = %s AND organization_id = %s", 
+                (committeeData['committee_name'], committeeData['organization_id'])
+            )  # Check if committee already exists
+
+            if cursor.fetchone()[0] > 0:
+                print(f"Committee '{committeeData['committee_name']}' already exists.")
+                cursor.close()
+                return False
+
+            # Insert into committee table
+            sql_committee = """
+                INSERT INTO committee (committee_name, organization_id)
+                VALUES (%s, %s)
+            """
+            cursor.execute(sql_committee, (committeeData['committee_name'], committeeData['organization_id']))
+
+            # Insert roles into committee_roles table if they don't already exist
+            sql_role_exists = """
+                SELECT COUNT(*) FROM committee_roles 
+                WHERE committee_name = %s AND committee_role = %s
+            """
+            sql_insert_role = """
+                INSERT INTO committee_roles (committee_role, committee_name)
+                VALUES (%s, %s)
+            """
+            for role in committeeData['roles']:
+                cursor.execute(sql_role_exists, (committeeData['committee_name'], role))
+                if cursor.fetchone()[0] == 0:
+                    cursor.execute(sql_insert_role, (role, committeeData['committee_name']))
+                else:
+                    print(f"Role '{role}' already exists in committee '{committeeData['committee_name']}', skipping insertion.")
+
+            self.connection.commit()
+            cursor.close()
+            return True
+
+        except Error as e:
+            print(f"Failed to register committee and roles: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+
+    
+    def register_new_studentRecord(self, memberDataDictionary): 
+        cursor = self.connection.cursor()
+        try:
+            sqlStatementString = """
+                INSERT INTO member (
+                    first_name, 
+                    middle_name, 
+                    last_name, 
+                    student_number, 
+                    degree_program, 
+                    gender, 
+                    graduation_status, 
+                    graduation_date
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            values = (
+                memberDataDictionary['first_name'],
+                memberDataDictionary['middle_name'],
+                memberDataDictionary['last_name'],
+                memberDataDictionary['student_number'],
+                memberDataDictionary['degree_program'],
+                memberDataDictionary['gender'],
+                memberDataDictionary['graduation_status'],
+                memberDataDictionary['graduation_date']
+            )
+            
+            cursor.execute(sqlStatementString, values)
+            self.connection.commit()
+            cursor.close() 
+            return True
+            
+        except Error as e:
+            print(f"\tRegistration failed: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+        
+    
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+
     def drop_organization(self, orgName):
         cursor = self.connection.cursor()
         try: 
@@ -359,3 +678,4 @@ class JERTDatabaseManager:
             print("Error:", e)
             cursor.close()
             return False
+

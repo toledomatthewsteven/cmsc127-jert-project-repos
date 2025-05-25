@@ -44,7 +44,7 @@ INSERT INTO member (first_name, middle_name, last_name, student_number, degree_p
 
 -- Adds into membership table
 INSERT INTO membership (student_number, organization_id, batch_year, join_date)
-            VALUES ('202512345', 1, 2025, CURDATE())
+            VALUES ('2025-12345', 1, 2025, CURDATE())
 
 -- Assigns to committee
 INSERT INTO member_committee (student_number, committee_name, academic_year, semester, membership_status, committee_role)

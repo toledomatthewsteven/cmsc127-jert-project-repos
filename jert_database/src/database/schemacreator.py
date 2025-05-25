@@ -80,11 +80,16 @@ def create_committee_table(connection):
     try:  
         cursor.execute("""
             CREATE TABLE committee(
-                committee_name varchar(30) PRIMARY KEY,
-                organization_id int
+                committee_name varchar(30),
+                organization_id int,
+                PRIMARY KEY (committee_name, organization_id)
             )
         """) 
-        cursor.execute("ALTER TABLE committee ADD CONSTRAINT committee_org_fk FOREIGN KEY(organization_id) REFERENCES student_organization(organization_id)")
+        cursor.execute("""
+            ALTER TABLE committee
+            ADD CONSTRAINT committee_org_fk
+            FOREIGN KEY (organization_id) REFERENCES student_organization(organization_id)
+        """)
         
         connection.commit() 
         print("\tCommittee table created successfully in new database!")
@@ -93,6 +98,7 @@ def create_committee_table(connection):
         raise
     finally:
         cursor.close()
+# MODIFIED: same committee name can appear in different organizations, but cannot be duplicated within the same organization
 
 def create_committee_roles_table(connection):
     cursor = connection.cursor()
