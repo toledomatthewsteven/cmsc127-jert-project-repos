@@ -53,6 +53,37 @@
 
         --uhmmm 
         --USER CHOICE: View by degree program  
+            -- SELECT 
+            --     m.student_number,
+            --     CASE 
+            --         WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+            --         ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+            --     END AS member_name,
+            --     m.degree_program,
+            --     m.gender,
+            --     c.committee_name,
+            --     mpc.committee_role,
+            --     mpc.academic_year,
+            --     mpc.semester,
+            -- FROM 
+            --     member m
+            -- JOIN 
+            --     MEM_PART_OF_COMMITTEE mpc ON m.student_number = mpc.student_number
+            -- JOIN 
+            --     COMMITTEE c ON mpc.committee_name = c.committee_name
+            -- JOIN 
+            --     COMMITTEE_COMMITTEE_ROLE ccr ON c.committee_name = ccr.committee_name 
+            --                                 AND mpc.committee_role = ccr.committee_role
+            -- WHERE 
+            --     c.organization_id = referenced_organization_id
+            --     AND mpc.academic_year = referenced_academic_year
+            --     AND mpc.semester = referenced_semester
+            -- ORDER BY 
+            --     m.degree_program,
+            --     m.last_name,
+            --     m.first_name;
+
+            -- USER CHOICE: View members by degree program (organization context only)
             SELECT 
                 m.student_number,
                 CASE 
@@ -60,28 +91,18 @@
                     ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
                 END AS member_name,
                 m.degree_program,
-                m.gender,
-                c.committee_name,
-                mpc.committee_role,
-                mpc.academic_year,
-                mpc.semester,
+                m.gender
             FROM 
                 member m
             JOIN 
-                MEM_PART_OF_COMMITTEE mpc ON m.student_number = mpc.student_number
-            JOIN 
-                COMMITTEE c ON mpc.committee_name = c.committee_name
-            JOIN 
-                COMMITTEE_COMMITTEE_ROLE ccr ON c.committee_name = ccr.committee_name 
-                                            AND mpc.committee_role = ccr.committee_role
+                membership mem ON m.student_number = mem.student_number
             WHERE 
-                c.organization_id = referenced_organization_id
-                AND mpc.academic_year = referenced_academic_year
-                AND mpc.semester = referenced_semester
+                mem.organization_id = referenced_organization_id
             ORDER BY 
                 m.degree_program,
                 m.last_name,
                 m.first_name;
+
 
         --general thought pattern: the query depends on what its looking for and whether it has
         --necessary associations like a committee role is associated with a committee
