@@ -285,24 +285,44 @@ class JERTDatabaseManager:
     # ============================================ GETTERS =========================
     # ============================================ GETTERS =========================
 
-    def get_all_organizations(self): 
+    def get_member_committee_history(self, student_number, orgID):
         cursor = self.connection.cursor(dictionary=True)
-        try: 
+        try:
             cursor.execute("""
-                SELECT organization_id, org_name
-                FROM student_organization
-                ORDER BY org_name
-            """)
-
-            org_list = cursor.fetchall()
-            cursor.close()
-            return org_list
-            
+                SELECT committee_name, committee_role, academic_year, semester, membership_status
+                FROM member_committee
+                WHERE student_number = %s AND committee_name IN (
+                    SELECT committee_name FROM committee WHERE organization_id = %s
+                )
+                ORDER BY academic_year DESC, semester DESC
+            """, (student_number, orgID))
+            return cursor.fetchall()
         except Error as e:
-            print(f"Database error when fetching all organizations: {e}")
+            print(f"Database error fetching committee history for student: {e}")
             return []
-        finally:  
+        finally:
             cursor.close()
+
+    def get_membership_record(self, student_number, orgID):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT student_number, organization_id, batch_year, join_date
+                FROM membership
+                WHERE student_number = %s AND organization_id = %s
+            """, (student_number, orgID))
+            
+            record = cursor.fetchone()  # fetch one record or None if not found
+            return record
+
+        except Error as e:
+            print(f"Database error fetching membership record: {e}")
+            return None
+
+        finally:
+            cursor.close()
+
+
 
     def get_organization_by_name(self, orgName): 
         cursor = self.connection.cursor(dictionary=True)
@@ -498,7 +518,7 @@ class JERTDatabaseManager:
     def register_member_under_committee_with_role(self, student_number, orgID, committeeName, roleName, academic_year, semester, membership_status):
         cursor = self.connection.cursor()
         try:
-            # Check committee existence for orgID
+            # Double check committee existence for orgID
             cursor.execute("""
                 SELECT * FROM committee
                 WHERE committee_name = %s AND organization_id = %s
@@ -508,7 +528,7 @@ class JERTDatabaseManager:
                 print(f"Error: Committee '{committeeName}' does not exist under organization ID {orgID}.")
                 return False
 
-            # Check role existence in committee
+            # Double check role existence in committee
             cursor.execute("""
                 SELECT * FROM committee_roles
                 WHERE committee_name = %s AND committee_role = %s
@@ -518,7 +538,7 @@ class JERTDatabaseManager:
                 print(f"Error: Role '{roleName}' does not exist under committee '{committeeName}'.")
                 return False
 
-            # Insert into member_committee with extra columns
+            # Insert into member_committee proper
             cursor.execute("""
                 INSERT INTO member_committee (student_number, committee_name, academic_year, semester, membership_status, committee_role)
                 VALUES (%s, %s, %s, %s, %s, %s)
@@ -678,6 +698,38 @@ class JERTDatabaseManager:
             print("Error:", e)
             cursor.close()
             return False
+    
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+    # ============================================ UPDATERS ============================================
+
+    def update_existing_committee_log(self, student_number, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
+        cursor = self.connection.cursor()
+        try:
+            # Update only committee_name, committee_role, membership_status for the matching student_number, academic_year, semester
+            sql = """
+                UPDATE member_committee
+                SET committee_name = %s,
+                    committee_role = %s,
+                    membership_status = %s
+                WHERE student_number = %s
+                AND academic_year = %s
+                AND semester = %s
+            """
+            cursor.execute(sql, (assigned_committee, assigned_role, membership_status, student_number, academic_year, semester))
+            self.connection.commit()
+            
+            if cursor.rowcount == 0:
+                print("\tNo matching record found to update.") #not rlly gonna be reached but, just in case.
+                return False
+            return True
+        except Error as e:
+            print(f"Database error when updating committee log: {e}")
+            return False
+        finally:
+            cursor.close()
 
 
     # ============================================ REPORT GENERATORS ============================================
