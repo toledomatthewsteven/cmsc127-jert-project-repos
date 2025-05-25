@@ -47,7 +47,7 @@ class JERTDatabaseManager:
             cursor.close()
 
     def adminConnectionGetter(self):
-        password = getpass.getpass("Password for root user: ")
+        password = getpass.getpass("Password for root user: ") 
         try:
             return mariadb.connect(
                 host="localhost",
@@ -67,7 +67,7 @@ class JERTDatabaseManager:
 
         adminConnection = self.adminConnectionGetter()
         if not adminConnection:
-            print("Cannot proceed without admin access.")
+            print("Cannot proceed without admin access. Possible cause of error: wrong password for 'root'.")
             exit(1)  # straight up exit the program
 
         if not self.userExtractor(adminConnection, username):  # if user does not exist
@@ -77,9 +77,16 @@ class JERTDatabaseManager:
             jertPasswordCredential = jertPassword
         else :
             jertPasswordCredential = getpass.getpass(f"Password for '{username}': ")
-
-
-            #TODO: i wanna add like an innate password validator for jertPasswordCredential so that it auto.... rejects you lol BUT IM TIRED RN (did nothing all day kind of)
+            try:
+                testConnection = mariadb.connect(
+                    user=username,
+                    password=jertPasswordCredential,
+                    host="localhost"
+                )
+                testConnection.close()  # success 
+            except mariadb.Error as e:
+                print(f"Incorrect password for '{username}'. Exiting program.")
+                exit(1)
 
         print("\n==================== Database Access ====================")
         databaseName = self.get_db_name()  # prompt early so user permissions can be scoped

@@ -35,8 +35,12 @@ CREATE TABLE member_committee(
 
 -- ADD
 -- Inserts member 
+
+
 INSERT INTO member (first_name, middle_name, last_name, student_number, degree_program, gender, graduation_status, graduation_date) 
             VALUES ('John Adrian', 'Bodrigues', 'Caduzale', '202512345','BS Quantum Computing', 'M', false, NULL);
+
+--only add if this if that member does not exist yet (thus, check for student number )unique_
 
 -- Adds into membership table
 INSERT INTO membership (student_number, organization_id, batch_year, join_date)
