@@ -474,6 +474,26 @@ class JERTDatabaseManager:
         
         finally:
             cursor.close()
+    
+    def get_fees(self, orgID):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT *
+                FROM fee
+                ORDER BY payment_date
+            """)
+
+            feelist = cursor.fetchall()
+            cursor.close()
+            return feelist
+            
+        except Error as e:
+            print(f"Database error when fetching all fees: {e}")
+            return []
+        finally:  
+            cursor.close()
+
 
     # ============================================ REGISTRATIONS =========================
     # ============================================ REGISTRATIONS =========================
@@ -671,12 +691,47 @@ class JERTDatabaseManager:
             cursor.close()
             return False
         
-    
-    # ============================================ DROPPERS ============================================
-    # ============================================ DROPPERS ============================================
-    # ============================================ DROPPERS ============================================
-    # ============================================ DROPPERS ============================================
-    # ============================================ DROPPERS ============================================
+
+    # ============================================ FEE SEPARATOR====================
+
+     
+    def register_new_feeRecord(self, feeDataDictionary): 
+        cursor = self.connection.cursor()
+        try:
+            sqlStatementString = """
+                INSERT INTO fee (
+                    amount,
+                    due_date,
+                    semester,
+                    academic_year,
+                    student_number,
+                    organization_id
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            values = (
+                feeDataDictionary['amount'],
+                feeDataDictionary['due_date'],
+                feeDataDictionary['semester'],
+                feeDataDictionary['academic_year'],
+                feeDataDictionary['student_number'],
+                feeDataDictionary['organization_id']
+            )
+            
+            cursor.execute(sqlStatementString, values)
+            self.connection.commit()
+            cursor.close() 
+            return True
+            
+        except Error as e:
+            print(f"\tRegistration failed: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
 
     def drop_organization(self, orgName):
         cursor = self.connection.cursor()
