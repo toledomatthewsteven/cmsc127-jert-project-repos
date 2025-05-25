@@ -271,6 +271,19 @@ class JERTDatabaseManager:
 
 
     # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+    # ============================================ STUFF USED BY MAIN =========================
+
+    
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
+    # ============================================ GETTERS =========================
 
     def get_all_organizations(self): 
         cursor = self.connection.cursor(dictionary=True)
@@ -309,58 +322,8 @@ class JERTDatabaseManager:
             
         finally:
             cursor.close()
-    
-    def register_organization(self, orgDataDictionary): 
-        cursor = self.connection.cursor()
-        try:
-            sqlStatementString = """
-                INSERT INTO student_organization (
-                    org_name, 
-                    org_type, 
-                    semesters_active, 
-                    year_established, 
-                    abbreviation
-                ) VALUES (%s, %s, %s, %s, %s)
-            """
-            values = (
-                orgDataDictionary['name'],
-                orgDataDictionary['type'],
-                orgDataDictionary['semesters_active'],
-                orgDataDictionary['year_established'],
-                orgDataDictionary['abbreviation']
-            )
-            
-            cursor.execute(sqlStatementString, values)
-            self.connection.commit()
-            cursor.close() 
-            return True
-            
-        except Error as e:
-            print(f"\tRegistration failed: {e}")
-            self.connection.rollback()
-            cursor.close()
-            return False
-    
-    def drop_organization(self, orgName):
-        cursor = self.connection.cursor()
-        try: 
-            cursor.execute("SELECT organization_id FROM student_organization WHERE org_name = %s", (orgName,))
-            org = cursor.fetchone()
-            if org is None:
-                return False
-            
-            org_id = org[0]
 
-            cursor.execute("DELETE FROM membership WHERE organization_id = %s", (org_id,))
-            cursor.execute("DELETE FROM student_organization WHERE organization_id = %s", (org_id,))
-
-            self.connection.commit()
-            cursor.close()
-            return True
-        except Exception as e:
-            print("Error:", e)
-            cursor.close()
-            return False
+    
         
     def get_or_check_studentNumber_in_Membership(self, student_number, orgID, orgName):
         cursor = self.connection.cursor(dictionary=True)
@@ -491,6 +454,46 @@ class JERTDatabaseManager:
         
         finally:
             cursor.close()
+
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    # ============================================ REGISTRATIONS =========================
+    
+    def register_organization(self, orgDataDictionary): 
+        cursor = self.connection.cursor()
+        try:
+            sqlStatementString = """
+                INSERT INTO student_organization (
+                    org_name, 
+                    org_type, 
+                    semesters_active, 
+                    year_established, 
+                    abbreviation
+                ) VALUES (%s, %s, %s, %s, %s)
+            """
+            values = (
+                orgDataDictionary['name'],
+                orgDataDictionary['type'],
+                orgDataDictionary['semesters_active'],
+                orgDataDictionary['year_established'],
+                orgDataDictionary['abbreviation']
+            )
+            
+            cursor.execute(sqlStatementString, values)
+            self.connection.commit()
+            cursor.close() 
+            return True
+            
+        except Error as e:
+            print(f"\tRegistration failed: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+    
 
     def register_member_under_committee_with_role(self, student_number, orgID, committeeName, roleName, academic_year, semester, membership_status):
         cursor = self.connection.cursor()
@@ -645,6 +648,34 @@ class JERTDatabaseManager:
         except Error as e:
             print(f"\tRegistration failed: {e}")
             self.connection.rollback()
+            cursor.close()
+            return False
+        
+    
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+    # ============================================ DROPPERS =========================
+
+    def drop_organization(self, orgName):
+        cursor = self.connection.cursor()
+        try: 
+            cursor.execute("SELECT organization_id FROM student_organization WHERE org_name = %s", (orgName,))
+            org = cursor.fetchone()
+            if org is None:
+                return False
+            
+            org_id = org[0]
+
+            cursor.execute("DELETE FROM membership WHERE organization_id = %s", (org_id,))
+            cursor.execute("DELETE FROM student_organization WHERE organization_id = %s", (org_id,))
+
+            self.connection.commit()
+            cursor.close()
+            return True
+        except Exception as e:
+            print("Error:", e)
             cursor.close()
             return False
 
