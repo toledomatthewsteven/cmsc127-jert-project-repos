@@ -145,7 +145,7 @@ class MainApplication:
         while True:
             print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
             print("[1] Add a Member")
-            print("[2] Update a Member's Information.") # 2 modes ? : update actual member table VS relocate them to a different committee (so bale they have the start date for their 1st committee, for their 2nd, etc)
+            print("[2] Update a Member's Information") # 2 modes ? : update actual member table VS relocate them to a different committee (so bale they have the start date for their 1st committee, for their 2nd, etc)
             print("[3] Delete a Member's Record") # .. should have 2 modes: disaffliation VS actually deleting them from the member table 
             print("[4] Search for a Member")  # 1 combined mode: search in member table AND search if they are part of the organization
             print("[5] Track a Member's Membership Status (is this the right label)")   
@@ -179,93 +179,99 @@ class MainApplication:
             else:
                 print("Invalid choice. Please try again.")
 
+    def update_member(self, orgID, org_name):
+        print()
 
     def add_member(self, orgID, org_name):
-        newMember_studentnumber = input("Enter student number of member: ")
-        newMember_studentrecord = self.db_manager.get_student_record_by_studentNumber(newMember_studentnumber)
+        try: 
+            newMember_studentnumber = input("Enter student number of member: ")
+            newMember_studentrecord = self.db_manager.get_student_record_by_studentNumber(newMember_studentnumber)
 
-        if not newMember_studentrecord:
-            print(f"\tStudent with student number {newMember_studentnumber} not found in this database's student records.")
-            while True:
-                decision_createNewStudent = input("Create a new student record? (y/n): ")
-                if decision_createNewStudent == 'y':
-                    # assign newMember_studentnumber to the created student number
-                    newMember_studentnumber = self.create_newStudentRecord()
-                    if not newMember_studentnumber:
-                        print("\tStudent registration failed. Student number is invalid.")
-                        return  # early exit because no valid student number
-                    break
-                elif decision_createNewStudent == 'n':
-                    print("Student record creation aborted.")
-                    return  # early exit to skip committee assignment
-                else:
-                    print("Invalid choice. Please try again.")
-        else:
-            print(f"\tStudent with student number '{newMember_studentnumber}' found!")
-
-        already_member = self.db_manager.get_or_check_studentNumber_in_Membership(newMember_studentnumber, orgID, org_name)
-        if already_member:
-            print(f"\tWarning: Student '{newMember_studentnumber}' is already registered as a member of '{org_name}'.")  
-            print("\tMember addition aborted.")
-            return
-
-        # committee assignment for a valid student number (found or created)
-        committee_acad_year_start = self.committee_and_role_assignment(orgID, org_name, newMember_studentnumber)
-        if not committee_acad_year_start:
-            print("Committee and role assignment failed or skipped.")
-            return
-
-        committee_acad_year_end = committee_acad_year_start + 1  # compute academic year end
-
-        while True: 
-            while True: # Prompt for batch year
-                batch_year_input = input("Enter batch join-year (YYYY): ").strip()
-                if batch_year_input.isdigit() and len(batch_year_input) == 4:
-                    batch_year = int(batch_year_input)
-                    if batch_year > committee_acad_year_end:
-                        print(f"Warning: Batch year ({batch_year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid year.")
-                    else:
+            if not newMember_studentrecord:
+                print(f"\tStudent with student number {newMember_studentnumber} not found in this database's student records.")
+                while True:
+                    decision_createNewStudent = input("Create a new student record? (y/n): ")
+                    if decision_createNewStudent == 'y':
+                        # assign newMember_studentnumber to the created student number
+                        newMember_studentnumber = self.create_newStudentRecord()
+                        if not newMember_studentnumber:
+                            print("\tStudent registration failed. Student number is invalid.")
+                            return  # early exit because no valid student number
                         break
-                else:
-                    print("Invalid batch join-year. Please enter a 4-digit year.")
+                    elif decision_createNewStudent == 'n':
+                        print("Student record creation aborted.")
+                        return  # early exit to skip committee assignment
+                    else:
+                        print("Invalid choice. Please try again.")
+            else:
+                print(f"\tStudent with student number '{newMember_studentnumber}' found!")
 
-            # Prompt for join date
-            while True:
-                join_date_input = input("Enter join date (YYYY-MM-DD) [default today]: ").strip()
-                if not join_date_input:
-                    join_date = None  # default to today
-                    join_date_obj = datetime.today()
-                else:
-                    try:
-                        join_date_obj = datetime.strptime(join_date_input, "%Y-%m-%d")
-                        join_date = join_date_input
-                    except ValueError:
-                        print("Invalid date format. Please enter a valid date in YYYY-MM-DD format.")
+            already_member = self.db_manager.get_or_check_studentNumber_in_Membership(newMember_studentnumber, orgID, org_name)
+            if already_member:
+                print(f"\tWarning: Student '{newMember_studentnumber}' is already registered as a member of '{org_name}'.")  
+                print("\tMember addition aborted.")
+                return
+
+            # committee assignment for a valid student number (found or created)
+            committee_acad_year_start = self.committee_and_role_assignment(orgID, org_name, newMember_studentnumber)
+            if not committee_acad_year_start:
+                print("Committee and role assignment failed or skipped.")
+                return
+
+            committee_acad_year_end = committee_acad_year_start + 1  # compute academic year end
+
+            while True: 
+                while True: # Prompt for batch year
+                    batch_year_input = input("Enter batch join-year (YYYY): ").strip()
+                    if batch_year_input.isdigit() and len(batch_year_input) == 4:
+                        batch_year = int(batch_year_input)
+                        if batch_year > committee_acad_year_end:
+                            print(f"Warning: Batch year ({batch_year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid year.")
+                        else:
+                            break
+                    else:
+                        print("Invalid batch join-year. Please enter a 4-digit year.")
+
+                # Prompt for join date
+                while True:
+                    join_date_input = input("Enter join date (YYYY-MM-DD) [default today]: ").strip()
+                    if not join_date_input:
+                        join_date = None  # default to today
+                        join_date_obj = datetime.today()
+                    else:
+                        try:
+                            join_date_obj = datetime.strptime(join_date_input, "%Y-%m-%d")
+                            join_date = join_date_input
+                        except ValueError:
+                            print("Invalid date format. Please enter a valid date in YYYY-MM-DD format.")
+                            continue  # re-prompt for join date
+                    
+                    if join_date_obj.year > committee_acad_year_end:
+                        print(f"Warning: Join date year ({join_date_obj.year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid date.")
                         continue  # re-prompt for join date
-                
-                if join_date_obj.year > committee_acad_year_end:
-                    print(f"Warning: Join date year ({join_date_obj.year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid date.")
-                    continue  # re-prompt for join date
-                
-                break  # valid join date obtained
+                    
+                    break  # valid join date obtained
 
-            if join_date_obj.year != batch_year: # check batch year and join date year consistency (batch 2025 mmust join in year 2025 itself)
-                print(f"Warning: Join date year ({join_date_obj.year}) and batch year ({batch_year}) mismatch. Restarting input.")
-                continue  # restart entire loop
+                if join_date_obj.year != batch_year: # check batch year and join date year consistency (batch 2025 mmust join in year 2025 itself)
+                    print(f"Warning: Join date year ({join_date_obj.year}) and batch year ({batch_year}) mismatch. Restarting input.")
+                    continue  # restart entire loop
 
-            # If all validations passed
-            break
+                # If all validations passed
+                break
 
 
-        # Register membership!!!! no need a separate divider area for it
-        if self.db_manager.register_membership(newMember_studentnumber, orgID, batch_year, join_date):
-            print(f"\tMembership for student '{newMember_studentnumber}' in org '{org_name}' registered successfully!")
-        else:
-            print("Failed to register membership.")
-            return #dk how to handle case where committee assignment works but membership dont :crying_laughing:
-        
-        print("\tMember-adding Operation Successful!")
-        return 
+            # Register membership!!!! no need a separate divider area for it
+            if self.db_manager.register_membership(newMember_studentnumber, orgID, batch_year, join_date):
+                print(f"\tMembership for student '{newMember_studentnumber}' in org '{org_name}' registered successfully!")
+            else:
+                print("Failed to register membership.")
+                return #dk how to handle case where committee assignment works but membership dont :crying_laughing:
+            
+            print("\tMember-adding Operation Successful!")
+            return 
+        except KeyboardInterrupt:
+            print("\nRegistration cancelled.")
+            return None
 
 
 # i should probably try to OOP this..... UGHHHHHH!!!!!

@@ -182,6 +182,8 @@ CREATE TABLE fee(
     organization_id int 
 );
 
+--TODO: I FEEL LIKE ... we need more here... bcoz right now i dont think we even have a way to assign a fee to a student and a way to update that fee's status etc
+
 -- Will show the unpaid fees past deadline 
 SELECT
     f.fee_id AS `Fee ID`,
