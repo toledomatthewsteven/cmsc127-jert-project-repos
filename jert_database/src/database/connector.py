@@ -1011,6 +1011,143 @@ class JERTDatabaseManager:
     # ============================================ REPORT GENERATORS ============================================
     # ============================================ REPORT GENERATORS ============================================
 
+    def view_and_sort_ByRole(self, orgID): 
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    mc.committee_name,
+                    mc.committee_role,
+                    m.degree_program,
+                    m.gender
+                FROM 
+                    member m
+                JOIN 
+                    member_committee mc ON m.student_number = mc.student_number
+                JOIN 
+                    (
+                        SELECT student_number, organization_id, MAX(CONCAT(academic_year,
+                            CASE semester
+                                WHEN 'First' THEN '1'
+                                WHEN 'Second' THEN '2'
+                                ELSE '0' END)) AS latest_period
+                        FROM member_committee
+                        GROUP BY student_number, organization_id
+                    ) latest ON mc.student_number = latest.student_number
+                            AND mc.organization_id = latest.organization_id
+                            AND CONCAT(mc.academic_year, 
+                                        CASE mc.semester 
+                                            WHEN 'First' THEN '1' 
+                                            WHEN 'Second' THEN '2' 
+                                            ELSE '0' END) = latest.latest_period
+                WHERE 
+                    mc.organization_id = %s
+                ORDER BY 
+                    mc.committee_name,
+                    mc.committee_role,
+                    m.last_name,
+                    m.first_name;
+
+            """, (orgID, ))
+            
+            results = cursor.fetchall()
+            return results
+
+        except Error as e:
+            print(f"Database error when sorting by latest role: {e}")
+            return None
+
+        finally:
+            cursor.close()
+    
+    def view_and_sort_ByStatus(self, orgID):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    m.degree_program,
+                    m.gender,
+                    latest.mc_status AS latest_status
+                FROM member m
+                JOIN (
+                    SELECT mc.student_number, mc.organization_id, mc.membership_status AS mc_status
+                    FROM member_committee mc
+                    JOIN (
+                        SELECT student_number, organization_id, MAX(CONCAT(academic_year,
+                            CASE semester
+                                WHEN 'First' THEN '1'
+                                WHEN 'Second' THEN '2'
+                                ELSE '0' END)) AS latest_period
+                        FROM member_committee
+                        GROUP BY student_number, organization_id
+                    ) latest_periods 
+                    ON mc.student_number = latest_periods.student_number
+                    AND mc.organization_id = latest_periods.organization_id
+                    AND CONCAT(mc.academic_year,
+                            CASE mc.semester
+                                WHEN 'First' THEN '1'
+                                WHEN 'Second' THEN '2'
+                                ELSE '0' END) = latest_periods.latest_period
+                ) latest
+                ON m.student_number = latest.student_number
+                WHERE latest.organization_id = %s
+                ORDER BY latest.mc_status, m.last_name, m.first_name;
+            """, (orgID, ))
+
+            results = cursor.fetchall()
+            return results
+
+        except Error as e:
+            print(f"Database error when viewing latest membership status: {e}")
+            return None
+
+        finally:
+            cursor.close()
+
+    def view_and_sort_ByGender(self, orgID): 
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name, 
+                    m.gender,
+                    m.degree_program
+                FROM 
+                    member m
+                JOIN 
+                    membership mem ON m.student_number = mem.student_number
+                WHERE 
+                    mem.organization_id = %s
+                ORDER BY 
+                    m.gender,
+                    m.last_name,
+                    m.first_name;
+            """, (orgID,))
+            
+            results = cursor.fetchall()  # list of dicts
+            return results
+
+        except Error as e:
+            print(f"Database error when viewing/sorting by gender: {e}")
+            return None
+
+        finally:
+            cursor.close()
+
     def view_and_sort_ByDegreeProgram(self, orgID): 
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1040,6 +1177,90 @@ class JERTDatabaseManager:
 
         except Error as e:
             print(f"Database error when viewing/sorting by degree program: {e}")
+            return None
+
+        finally:
+            cursor.close()
+
+    def view_and_sort_ByBatchJoinYear(self, orgID): 
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name, 
+                    mem.batch_year as batch_year
+                FROM 
+                    member m
+                JOIN 
+                    membership mem ON m.student_number = mem.student_number
+                WHERE 
+                    mem.organization_id = %s
+                ORDER BY 
+                    mem.batch_year,
+                    m.last_name,
+                    m.first_name;
+            """, (orgID,))
+            
+            results = cursor.fetchall()  # list of dicts
+            return results
+
+        except Error as e:
+            print(f"Database error when viewing/sorting by gender: {e}")
+            return None
+
+        finally:
+            cursor.close()
+    
+    def view_and_sort_ByCommittee(self, orgID): 
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    mc.committee_name,
+                    m.degree_program,
+                    m.gender
+                FROM 
+                    member m
+                JOIN 
+                    member_committee mc ON m.student_number = mc.student_number
+                JOIN 
+                    (
+                        SELECT student_number, organization_id, MAX(CONCAT(academic_year,
+                            CASE semester
+                                WHEN 'First' THEN '1'
+                                WHEN 'Second' THEN '2'
+                                ELSE '0' END)) AS latest_period
+                        FROM member_committee
+                        GROUP BY student_number, organization_id
+                    ) latest ON mc.student_number = latest.student_number
+                            AND mc.organization_id = latest.organization_id
+                            AND CONCAT(mc.academic_year, 
+                                        CASE mc.semester 
+                                            WHEN 'First' THEN '1' 
+                                            WHEN 'Second' THEN '2' 
+                                            ELSE '0' END) = latest.latest_period
+                WHERE 
+                    mc.organization_id = %s
+                ORDER BY 
+                    mc.committee_name,
+                    m.last_name,
+                    m.first_name;
+            """, (orgID, ))
+
+            results = cursor.fetchall()
+            return results
+
+        except Error as e:
+            print(f"Database error when sorting by latest committee: {e}")
             return None
 
         finally:
