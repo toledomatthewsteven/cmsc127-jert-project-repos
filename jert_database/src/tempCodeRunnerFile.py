@@ -1,1 +1,1 @@
-get_committees_and_roles_by_orgID
+register_member_under_committee_with_role

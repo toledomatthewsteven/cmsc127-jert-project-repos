@@ -564,18 +564,24 @@ class JERTDatabaseManager:
             """, (committeeName, orgID))
             committee = cursor.fetchone()
             if not committee:
+                cursor.fetchall()  # Clear any remaining result rows
                 print(f"Error: Committee '{committeeName}' does not exist under organization ID {orgID}.")
                 return False
-
-            # Double check role existence in committee
+            else:
+                cursor.fetchall()  # Clear any remaining result rows (if any)
+            
+            # Double check role existence in committee (with orgID too)
             cursor.execute("""
                 SELECT * FROM committee_roles
-                WHERE committee_name = %s AND committee_role = %s
-            """, (committeeName, roleName))
+                WHERE committee_name = %s AND organization_id = %s AND committee_role = %s
+            """, (committeeName, orgID, roleName))
             role = cursor.fetchone()
             if not role:
+                cursor.fetchall()  # Clear any remaining result rows
                 print(f"Error: Role '{roleName}' does not exist under committee '{committeeName}'.")
                 return False
+            else:
+                cursor.fetchall()  # Clear any remaining result rows (if any)
 
             # Insert into member_committee proper
             cursor.execute("""
@@ -584,13 +590,13 @@ class JERTDatabaseManager:
             """, (student_number, committeeName, academic_year, semester, membership_status, roleName))
 
             self.connection.commit()
-            # print(f"Member '{student_number}' registered in committee '{committeeName}' with role '{roleName}' for {academic_year} {semester} ({membership_status}).")
             return True
 
         except Error as e:
             print(f"Database error during member registration under committee and role: {e}")
             self.connection.rollback()
             return False
+
 
         finally:
             cursor.close()
