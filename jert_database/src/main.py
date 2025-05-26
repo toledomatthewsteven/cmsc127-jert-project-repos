@@ -20,7 +20,8 @@ class MainApplication:
     def student_member_view(self):
         print("\n====================STUDENT VIEW====================")
         print("[1] Update a student record")
-        print("[2] See unpaid fees of a student in all of their organizations")
+        print("[2] Delete a student record") #swill delete them from the system entirely... all fees... all memberships... all member_comm... 
+        print("[3] See Unpaid Fees of a Student (in all of their organizations)")
         print("[0] Back ")
         
         choice = input("Enter a choice: ")
@@ -149,9 +150,9 @@ class MainApplication:
             print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
             print("[1] Add a Member")
             print("[2] Update a Member's Information") # 2 modes ? : update actual member table VS relocate them to a different committee (so bale they have the start date for their 1st committee, for their 2nd, etc)
-            print("[3] Delete a Member's Record") # .. should have 2 modes: disaffliation VS actually deleting them from the member table .. put deleting from member table in the user thing lol. but that's low prio.
-            print("[4] Search for a Member")  # 1 combined mode: search in member table AND search if they are part of the organization
-            print("[5] Track a Member's Membership Status (is this the right label)")   
+            print("[3] Delete a Member's Record") # .. 1 mode. disaffliation? well, yes. but in a sense delete all rows of their student number that is related to the org. as if they were NEVER a member
+            print("[4] Search for a Member")  # 1 combined mode: search first if they are part of the organization , if no. say: this student-number is not a member of ur org. if yes, then extract mem table info.
+            print("[5] Track a Member's Committee/Role/Status History")    
             print("[0] Back ")
             print("")
 
@@ -166,24 +167,129 @@ class MainApplication:
                 continue
 
             elif choice == '3':
-                print("3")
+                self.delete_member_record(orgID, org_name)
                 continue 
 
             elif choice == '4':
-                print("4")
+                self.search_org_member_record(orgID, org_name)
                 continue 
 
             elif choice == '5':
-                print("5")
+                self.track_org_member(orgID, org_name)
                 continue 
-            
+
             elif choice == '0':
                 break
+            
             else:
                 print("Invalid choice. Please try again.")
 
+
+    def search_org_member_record(self, orgID, org_name):
+        print(f"\n========== Search Member Interface: '{org_name}' ==========")
+        try:
+            student_number = input("Enter student number of member to search for: ").strip()
+            
+            history = self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, org_name) # Check if student exists in membership relationship
+
+            if not history:
+                print(f"\tSeems like student number '{student_number}' is not a member of '{org_name}'.")
+                return
+            
+            member_table_entry = self.db_manager.get_student_record_by_studentNumber(student_number)
+            if member_table_entry: 
+                member_table_entry['graduation_status'] = "Not Yet Graduated" if member_table_entry['graduation_status'] == 0 else "Graduated" #readability concern 
+                member_table_entry['graduation_date'] = "N/A" if member_table_entry['graduation_date'] is None else member_table_entry['graduation_date']
+
+                better_names = { # mapping the keys to more readable headers
+                    'first_name': 'First Name',
+                    'middle_name': 'Middle Name',
+                    'last_name': 'Last Name',
+                    'student_number': 'Student Number',
+                    'degree_program': 'Degree Program',
+                    'gender': 'Gender',
+                    'graduation_status': 'Graduation Status',
+                    'graduation_date': 'Graduation Date'
+                }
+
+                headers = [better_names.get(key, key) for key in member_table_entry.keys()]
+                values = [member_table_entry[key] for key in member_table_entry.keys()]
+
+                print(tabulate([values], headers=headers, tablefmt="grid"))
+            else:
+                print(f"No record found for student number {student_number}.")
+
+        except KeyboardInterrupt:
+            print("Update process aborted.")
+            return
+    
+    def track_org_member(self, orgID, org_name):
+        print(f"\n========== Tracking Member History Interface: '{org_name}' ==========")
+        try:
+            student_number = input("Enter student number of member to track history of: ").strip()
+            
+            history = self.db_manager.get_member_committee_history(student_number, orgID) # Check if student exists in committee history
+
+            if not history:
+                print(f"\tNo historical records found for student number '{student_number}' in '{org_name}'.")
+                return
+            
+            table_data = [[
+                record['committee_name'],
+                record['committee_role'],
+                record['academic_year'],
+                record['semester'],
+                record['membership_status']
+            ] for record in history]
+
+            print(f"\n=== Committee/Role/Status History for Student Number '{student_number}' ===") # Print as table 
+            print(tabulate(table_data, headers=["Committee", "Role", "Academic Year", "Semester", "Status"], tablefmt="grid"))
+
+            latest_entry = max(history, key=lambda entry: self.get_acad_year_semester_key(entry)) 
+            latest_ay = latest_entry['academic_year']
+            latest_sem = latest_entry['semester']
+            latest_committee = latest_entry['committee_name']
+            latest_role = latest_entry['committee_role']
+            latest_status = latest_entry['membership_status']
+
+            print("\nNote: This table only reflects entries where the committee, role, or status changed or initialized.")
+            print("If there are no later entries after a given year/semester, it means the member remains in that committee/role/status until further notice.")
+            print(f"For example, as of Academic Year {latest_ay}, {latest_sem} Semester,")
+            print(f"the member is in '{latest_committee}' with the role '{latest_role}' and status '{latest_status}'.")
+            print("Since there are no more recent entries, the member is assumed to still hold this role and status in this committee.")
+
+        except KeyboardInterrupt:
+            print("Update process aborted.")
+            return
+        
+    def get_acad_year_semester_key(self, entry): 
+        year_str = entry['academic_year'] # Extract start year as integer
+        year_start = int(year_str.split('-')[0]) 
+        semester_str = entry['semester'] # Convert semester to a number
+        semester_num = 1 if semester_str.lower() == 'first' else 2
+        
+        return (year_start, semester_num)
+
+    def delete_member_record(self, orgID, org_name): #TODO: THIS. later......
+        print()
+        print(f"\n========== Delete Member Interface: '{org_name}' ==========")
+        print(f"\tWarning: Deleting a member's record will delete all their associated fees, committee/role history, and membership information.")
+        print(f"\tWarning: Deleting a member's record for organization '{org_name}' will not delete their record from this entire database.")
+        print(f"\n========== Delete Member Interface: '{org_name}' ==========")
+        confirm = input(f"Are you sure you want to proceed? (y/n): ").lower()
+        if confirm == 'y':
+            if True: 
+                print("Member record deleted successfully.")
+            else:
+                print("Member record deletion failed.")
+        else: 
+            print("\tAborting deletion of member record.")
+            return
+
+
+
     def update_member(self, orgID, org_name):
-        print(f"\n========== Update Interface: '{org_name}' ==========")
+        print(f"\n========== Update Member Interface: '{org_name}' ==========")
         try:
             student_number = input("Enter student number of member to update: ").strip()
             
@@ -433,6 +539,7 @@ class MainApplication:
 
 
     def add_member(self, orgID, org_name):
+        print(f"\n========== Add Member Interface: '{org_name}' ==========")
         try: 
             newMember_studentnumber = input("Enter student number of member: ")
             newMember_studentrecord = self.db_manager.get_student_record_by_studentNumber(newMember_studentnumber)
@@ -874,24 +981,27 @@ class MainApplication:
             return
         
     def drop_organization(self):
-        organizations = self.db_manager.get_all_organizations()
-        
-        if not organizations:
-            print("\nNo organizations currently registered.")
-            return
-        else:
-            print("\nRegistered Organizations:")
-            for org in organizations:
-                print(f" + {org['org_name']}")
-        
-        org_name = input("\nEnter organization name to drop: ").strip()
-        confirm = input(f"WARNING: This will delete ALL memberships for '{org_name}'. Confirm? (y/n): ").lower()
-
-        if confirm == 'y':
-            if self.db_manager.drop_organization(org_name):
-                print("Organization deleted successfully.")
+        try: 
+            organizations = self.db_manager.get_all_organizations()
+            
+            if not organizations:
+                print("\nNo organizations currently registered.")
+                return
             else:
-                print("Deletion failed or organization not found.")
+                print("\nRegistered Organizations:")
+                for org in organizations:
+                    print(f" + {org['org_name']}")
+            
+            org_name = input("\nEnter organization name to drop: ").strip()
+            confirm = input(f"WARNING: This will delete ALL memberships for '{org_name}'. Confirm? (y/n): ").lower()
+
+            if confirm == 'y':
+                if self.db_manager.drop_organization(org_name): #TODO: fix this to also drop all related fees, committees, member-committee stuff
+                    print("Organization deleted successfully.")
+                else:
+                    print("Deletion failed or organization not found.")
+        except KeyboardInterrupt:
+            print("\tDropping interrupted.")
 
     #  ================== MINI DIVIDER =========================
 
@@ -1169,7 +1279,7 @@ class MainApplication:
             return
         else:
             print("Successfully connected to the database!")
-            print(self)
+            # print(self) #why are we print(self) ing :crying_laughing:
         try:
             while True:
                 self.main_menu()

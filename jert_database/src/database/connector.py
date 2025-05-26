@@ -165,7 +165,7 @@ class JERTDatabaseManager:
                 if not self.is_the_db_valid(self.connection):
                     print("!! Database schema validation failed. Please use a valid database or make a new one. !!")
                     self.connection.close()
-                    return None
+                    exit(1) #straight up exit #idgaf
 
                 # return self.connection
         except Error as e:
@@ -284,6 +284,25 @@ class JERTDatabaseManager:
     # ============================================ GETTERS =========================
     # ============================================ GETTERS =========================
     # ============================================ GETTERS =========================
+
+    def get_all_organizations(self):  #damn how'd this get lost in the commits
+        cursor = self.connection.cursor(dictionary=True)
+        try: 
+            cursor.execute("""
+                SELECT organization_id, org_name
+                FROM student_organization
+                ORDER BY org_name
+            """)
+
+            org_list = cursor.fetchall()
+            cursor.close()
+            return org_list
+            
+        except Error as e:
+            print(f"Database error when fetching all organizations: {e}")
+            return []
+        finally:  
+            cursor.close()
 
     def get_member_committee_history(self, student_number, orgID):
         cursor = self.connection.cursor(dictionary=True)
@@ -412,7 +431,8 @@ class JERTDatabaseManager:
             cursor.execute("""
                 SELECT c.committee_name, r.committee_role
                 FROM committee c
-                LEFT JOIN committee_roles r ON c.committee_name = r.committee_name
+                LEFT JOIN committee_roles r 
+                    ON c.committee_name = r.committee_name AND c.organization_id = r.organization_id
                 WHERE c.organization_id = %s
             """, (orgID,))
             
@@ -443,28 +463,26 @@ class JERTDatabaseManager:
             if not committees:
                 return []
             
-            # Fetch all roles for these committees
+            # Fetch all roles for these committees using organization_id
             cursor.execute("""
                 SELECT * FROM committee_roles
-                WHERE committee_name IN (
-                    SELECT committee_name FROM committee WHERE organization_id = %s
-                )
+                WHERE organization_id = %s
             """, (orgID,))
             
             roles = cursor.fetchall()  # list of dicts
             
-            # Organize roles by committee_name
+            # Organize roles by (committee_name, organization_id)
             role_map = {}
             for role in roles:
-                comm_name = role['committee_name']
-                if comm_name not in role_map:
-                    role_map[comm_name] = []
-                role_map[comm_name].append(role['committee_role'])
+                comm_key = (role['committee_name'], role['organization_id'])
+                if comm_key not in role_map:
+                    role_map[comm_key] = []
+                role_map[comm_key].append(role['committee_role'])
             
             # Add roles list to each committee dictionary
             for committee in committees:
-                comm_name = committee['committee_name']
-                committee['roles'] = role_map.get(comm_name, [])
+                comm_key = (committee['committee_name'], committee['organization_id'])
+                committee['roles'] = role_map.get(comm_key, [])
             
             return committees  # list of committee dicts with 'roles' key
 
@@ -474,6 +492,7 @@ class JERTDatabaseManager:
         
         finally:
             cursor.close()
+
     
     def get_fees(self, orgID):
         cursor = self.connection.cursor(dictionary=True)
@@ -609,14 +628,13 @@ class JERTDatabaseManager:
 
         cursor = self.connection.cursor()
         try:
-            
             cursor.execute(
                 "SELECT COUNT(*) FROM committee WHERE committee_name = %s AND organization_id = %s", 
                 (committeeData['committee_name'], committeeData['organization_id'])
             )  # Check if committee already exists
 
             if cursor.fetchone()[0] > 0:
-                print(f"Committee '{committeeData['committee_name']}' already exists.")
+                print(f"Committee '{committeeData['committee_name']}' already exists for this organization.")
                 cursor.close()
                 return False
 
@@ -627,21 +645,21 @@ class JERTDatabaseManager:
             """
             cursor.execute(sql_committee, (committeeData['committee_name'], committeeData['organization_id']))
 
-            # Insert roles into committee_roles table if they don't already exist
+            # Updated: Insert roles into committee_roles with organization_id
             sql_role_exists = """
                 SELECT COUNT(*) FROM committee_roles 
-                WHERE committee_name = %s AND committee_role = %s
+                WHERE committee_name = %s AND committee_role = %s AND organization_id = %s
             """
             sql_insert_role = """
-                INSERT INTO committee_roles (committee_role, committee_name)
-                VALUES (%s, %s)
+                INSERT INTO committee_roles (committee_role, committee_name, organization_id)
+                VALUES (%s, %s, %s)
             """
             for role in committeeData['roles']:
-                cursor.execute(sql_role_exists, (committeeData['committee_name'], role))
+                cursor.execute(sql_role_exists, (committeeData['committee_name'], role, committeeData['organization_id']))
                 if cursor.fetchone()[0] == 0:
-                    cursor.execute(sql_insert_role, (role, committeeData['committee_name']))
+                    cursor.execute(sql_insert_role, (role, committeeData['committee_name'], committeeData['organization_id']))
                 else:
-                    print(f"Role '{role}' already exists in committee '{committeeData['committee_name']}', skipping insertion.")
+                    print(f"Role '{role}' already exists in committee '{committeeData['committee_name']}' for organization {committeeData['organization_id']}, skipping insertion.")
 
             self.connection.commit()
             cursor.close()
@@ -652,6 +670,7 @@ class JERTDatabaseManager:
             self.connection.rollback()
             cursor.close()
             return False
+
 
     
     def register_new_studentRecord(self, memberDataDictionary): 
