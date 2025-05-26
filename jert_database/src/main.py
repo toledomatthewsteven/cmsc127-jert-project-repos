@@ -24,7 +24,7 @@ class MainApplication:
                 print("[1] Add a student record") # DONE
                 print("[2] Locate a student record") # DONE
                 print("[3] Update a student record") # DONE
-                print("[4] Delete a student record")  #TODO: killself 
+                print("[4] Delete a student record")  #DONE
                 print("[5] See Unpaid Fees of a Student (in all of their organizations)")
                 print("[0] Back ")
                 
@@ -39,12 +39,11 @@ class MainApplication:
                     continue 
 
                 if choice == '3':
-                    student_number = input("Enter student number (20XX-XXXXX): ")
-                    self.record_update_student(student_number)
+                    self.record_update_student()
                     continue
 
                 elif choice == '4':
-                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    self.record_delete_student_harsh()
                     continue
 
                 elif choice == '5':
@@ -58,6 +57,44 @@ class MainApplication:
                     print("Invalid choice. Please try again.")
         except KeyboardInterrupt:
             print("Student view interface aborted.")
+
+    def record_delete_student_harsh(self):  
+        try: 
+            print("\n=== DELETING STUDENT RECORD ===")
+            print("Note: Student number is uneditable. Please contact your supervisors if you wish to edit this.")
+            print(f"Warning: Deleting a student record will delete all their associated fees, organization committee/role history, and organization membership information.")
+            print(f"Warning: Deleting a student's record will remove them entirely from this database..")
+
+            print("\n=== DELETING STUDENT RECORD ===")
+            student_number = input("Enter student number (20XX-XXXXX): ")
+            entry = self.print_member_table_entry_contents_helper(student_number)
+
+            if not entry :
+                print("\tAborting delete.")
+                return
+            else :
+                print("\n=== DELETING STUDENT RECORD ===")
+                confirm = input(f"Are you sure you want to proceed with deleting this record? (y/n): ").lower()
+
+                if confirm == 'y':
+
+                    self.db_manager.drop_member_committee_records_for_student(student_number)
+                    self.db_manager.drop_fees_for_student(student_number)
+                    self.db_manager.drop_membership_for_student(student_number)
+                    self.db_manager.drop_member_entry_for_student(student_number)
+
+                    print("Student record deleted successfully.")
+                    return
+
+                else: 
+                    print("\tAborting deletion of member record.")
+                    return
+        
+        except KeyboardInterrupt:
+            print("Aborting delete.")
+            return
+
+        
 
     def record_update_student(self, student_number):
         # SEE IF ENTRY EXISTS 
@@ -150,7 +187,7 @@ class MainApplication:
             print("[1] See all registered organizations")
             print("[2] Register an organization") 
             print("[3] Inspect an organization") 
-            # print("[4] Drop/Delete an Organization") #TODO: touchup to delete all necessary components as well.. actually, just wont implement this bruh
+            # print("[4] Drop/Delete an Organization") #T0D0: touchup to delete all necessary components as well.. actually, just wont implement this bruh IT AINT IN SPECS
             print("[0] Back ")
             print("")
 
@@ -252,7 +289,7 @@ class MainApplication:
             print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
             print("[1] Add a Member") # DONE
             print("[2] Update a Member's Information") # DONE
-            print("[3] Delete a Member's Record") #TODO: DELETE
+            print("[3] Delete a Member's Record") #DONE
             print("[4] Search for a Member")  # DONE
             print("[5] Track a Member's Committee/Role/Status History") # DONE 
             print("[0] Back ")
@@ -287,15 +324,16 @@ class MainApplication:
                 print("Invalid choice. Please try again.")
 
 
-    def delete_member_record(self, orgID, org_name): #TODO: THIS. later......
+    def delete_member_record(self, orgID, org_name): 
         print()
         print(f"\n========== Delete Member Interface: '{org_name}' ==========")
-        print(f"\tWarning: Deleting a member's record will delete all their associated fees, committee/role history, and membership information.")
-        print(f"\tWarning: Deleting a member's record for organization '{org_name}' will not delete their record from this entire database.")
+        print(f"Warning: Deleting a member's record will delete all their associated fees, committee/role history, and membership information.")
+        print(f"Warning: Deleting a member's record for organization '{org_name}' will not delete their record from this entire database.")
         print(f"\n========== Delete Member Interface: '{org_name}' ==========")
         
         try:
             student_number = input("Enter student number of member to delete from organizational records: ").strip()
+            print("")
             
             history = self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, org_name) # Check if student exists in membership relationship
 
@@ -1192,7 +1230,8 @@ class MainApplication:
             confirm = input(f"WARNING: This will delete ALL memberships for '{org_name}'. Confirm? (y/n): ").lower()
 
             if confirm == 'y':
-                if self.db_manager.drop_organization(org_name): #TODO: fix this to also drop all related fees, committees, member-committee stuff
+                if self.db_manager.drop_organization(org_name): #t0d0: fix this to also drop all related fees, committees, member-committee stuff
+                    #JK it aint even implemented idgaf it not in the specs
                     print("Organization deleted successfully.")
                 else:
                     print("Deletion failed or organization not found.")

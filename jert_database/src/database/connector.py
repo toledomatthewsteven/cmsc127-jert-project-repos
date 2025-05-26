@@ -761,11 +761,8 @@ class JERTDatabaseManager:
         cursor = self.connection.cursor()
         try:
             sqlStatement = """
-                DELETE mc
-                FROM member_committee mc
-                JOIN committee_roles cr ON mc.committee_name = cr.committee_name AND mc.committee_role = cr.committee_role
-                JOIN committee c ON cr.committee_name = c.committee_name AND cr.organization_id = c.organization_id
-                WHERE mc.student_number = %s AND c.organization_id = %s
+                DELETE FROM member_committee
+                WHERE student_number = %s AND organization_id = %s
             """
             cursor.execute(sqlStatement, (student_number, orgID))
             self.connection.commit()
@@ -777,6 +774,7 @@ class JERTDatabaseManager:
             self.connection.rollback()
             cursor.close()
             return False
+
     
     def drop_fees_for_member_from_org(self, student_number, orgID):
         cursor = self.connection.cursor()
@@ -820,6 +818,97 @@ class JERTDatabaseManager:
         
         finally:
             cursor.close()
+
+    # DROP A STUDENT (ON THEIR HEAD!! :crying_laughing:) =====================
+    # DROP A STUDENT (ON THEIR HEAD!! :crying_laughing:) =====================
+    # DROP A STUDENT (ON THEIR HEAD!! :crying_laughing:) =====================
+    # DROP A STUDENT (ON THEIR HEAD!! :crying_laughing:) =====================
+    # DROP A STUDENT (ON THEIR HEAD!! :crying_laughing:) =====================
+
+    def drop_member_committee_records_for_student(self, student_number):
+        cursor = self.connection.cursor()
+        try:
+            sqlStatement = """
+                DELETE FROM member_committee
+                WHERE student_number = %s
+            """
+            cursor.execute(sqlStatement, (student_number,))
+            self.connection.commit()
+            print(f"\tDeleted {cursor.rowcount} entries from member_committee for student number '{student_number}'.")
+            cursor.close()
+            return True
+        except Error as e:
+            print(f"Error deleting member from committee records: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+
+    def drop_fees_for_student(self, student_number):
+        cursor = self.connection.cursor()
+        try:
+            sqlStatement = """
+                DELETE FROM fee
+                WHERE student_number = %s
+            """
+            cursor.execute(sqlStatement, (student_number,))
+            self.connection.commit()
+            print(f"\tDeleted {cursor.rowcount} fee records for student {student_number}.")
+            cursor.close()
+            return True
+        except Error as e:
+            print(f"Error deleting fee records: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+
+    def drop_membership_for_student(self, student_number):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                DELETE FROM membership
+                WHERE student_number = %s
+            """, (student_number,))
+            self.connection.commit()
+            
+            if cursor.rowcount > 0:
+                print(f"\tDeleted membership records for student '{student_number}'.")
+                return True
+            else:
+                print(f"No membership records found for student '{student_number}'.")
+                return False
+        
+        except Error as e:
+            print(f"Error deleting membership: {e}")
+            self.connection.rollback()
+            return False
+        
+        finally:
+            cursor.close()
+
+    def drop_member_entry_for_student(self, student_number):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("""
+                DELETE FROM member
+                WHERE student_number = %s
+            """, (student_number,))
+            self.connection.commit()
+            
+            if cursor.rowcount > 0:
+                print(f"\tDeleted student record for student '{student_number}'.")
+                return True
+            else:
+                print(f"No student records found for student '{student_number}'.")
+                return False
+        
+        except Error as e:
+            print(f"Error deleting student record: {e}")
+            self.connection.rollback()
+            return False
+        
+        finally:
+            cursor.close()
+
 
 
 
