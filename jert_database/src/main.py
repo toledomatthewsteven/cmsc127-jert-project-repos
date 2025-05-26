@@ -383,7 +383,7 @@ class MainApplication:
                 print("\tAborting deletion of member record.")
                 return
         except KeyboardInterrupt:
-            print("Update process aborted.")
+            print("Deletion process aborted.")
             return 
 
     def search_org_member_record(self, orgID, org_name):
@@ -421,7 +421,7 @@ class MainApplication:
                 print(f"No record found for student number {student_number}.")
 
         except KeyboardInterrupt:
-            print("Update process aborted.")
+            print("Search process aborted.")
             return
     
     def track_org_member(self, orgID, org_name):
@@ -460,7 +460,7 @@ class MainApplication:
             print("Since there are no more recent entries, the member is assumed to still hold this role and status in this committee.")
 
         except KeyboardInterrupt:
-            print("Update process aborted.")
+            print("Tracking process aborted.")
             return
         
     def get_acad_year_semester_key(self, entry): 
@@ -732,7 +732,7 @@ class MainApplication:
                         # assign newMember_studentnumber to the created student number
                         newMember_studentnumber = self.create_newStudentRecord()
                         if not newMember_studentnumber:
-                            print("\tStudent registration failed. Student number is invalid.")
+                            print("\tStudent registration failed. Student number is invalid or registration was manually terminated.")
                             return  # early exit because no valid student number
                         break
                     elif decision_createNewStudent == 'n':
@@ -1040,22 +1040,22 @@ class MainApplication:
             print("[2] Sort by Status") 
             print("[3] Sort by Gender")
             print("[4] Sort by Degree Program") #starting here coz it's easiest and we have a statement already
-            print("[5] Sort by Batch (year of membership)")
+            print("[5] Sort by Batch (join-year)")
             print("[6] Sort by Committee")
             print("[0] Back")
 
             choice = input("Enter a choice: ")
 
             if choice == '1':
-                print("1")
+                self.view_and_sort_ByRole(orgID, org_name)
                 continue 
 
             if choice == '2': #sort by status
-                # self.view_and_sort_ByStatus(orgID, org_name)
+                self.view_and_sort_ByStatus(orgID, org_name)
                 continue 
 
             if choice == '3':
-                print("3")
+                self.view_and_sort_ByGender(orgID, org_name)
                 continue 
 
             if choice == '4':
@@ -1063,11 +1063,11 @@ class MainApplication:
                 continue 
 
             if choice == '5':
-                print("5")
+                self.view_and_sort_ByBatchJoinYear(orgID, org_name)
                 continue 
 
             if choice == '6':
-                print("6")
+                self.view_and_sort_ByCommittee(orgID, org_name)
                 continue 
             
             elif choice == '0':
@@ -1075,8 +1075,81 @@ class MainApplication:
             else:
                 print("Invalid choice. Please try again.")
 
+    
+    
+    def view_and_sort_ByRole(self, orgID, org_name):
+        results = self.db_manager.view_and_sort_ByRole(orgID)  # returns list of dicts
+
+        if not results:
+            print(f"\nNo members with roles found for organization '{org_name}'.")
+            return
+
+        print(f"\n=== MEMBERS OF '{org_name}' SORTED BY COMMITTEE AND ROLE ===\n")
+        print("Note: This table only reflects entries where the committee and role are their latest entries.") 
+
+        headers = [
+            "Student Number", 
+            "Name", 
+            "Committee", 
+            "Role", 
+            "Degree Program", 
+            "Gender"
+        ]
+        table_data = [[
+            r['student_number'],
+            r['member_name'],
+            r['committee_name'],
+            r['committee_role'],
+            r['degree_program'],
+            r['gender']
+        ] for r in results]
+
+        # Print the table
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
     def view_and_sort_ByStatus(self, orgID, org_name):
-        print()
+        results = self.db_manager.view_and_sort_ByStatus(orgID)  # returns list of dicts
+
+        if not results:
+            print(f"\nNo members found for organization '{org_name}'.")
+            return
+
+        print(f"\n=== MEMBERS OF '{org_name}' SORTED BY LATEST MEMBERSHIP STATUS ===\n")
+        print("Note: This table reflects only the latest membership status for each member.")
+
+        headers = [
+            "Student Number",
+            "Name",
+            "Degree Program",
+            "Gender",
+            "Latest Membership Status"
+        ]
+        table_data = [[
+            r['student_number'],
+            r['member_name'],
+            r['degree_program'],
+            r['gender'],
+            r['latest_status']
+        ] for r in results]
+
+        # Print the table
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+    def view_and_sort_ByGender(self, orgID, org_name):
+        results = self.db_manager.view_and_sort_ByGender(orgID) #returns lsit of dicts
+
+        if not results:
+            print(f"\nNo members found for organization '{org_name}'.")
+            return
+
+        print(f"\n=== MEMBERS OF '{org_name}' SORTED BY GENDER ===\n")
+        
+        # Prepare data for tabulate
+        headers = ["Student Number", "Name", "Degree Program", "Gender"]
+        table_data = [[r['student_number'], r['member_name'], r['degree_program'], r['gender']] for r in results]
+
+        # Print the table
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
     def view_and_sort_ByDegreeProgram(self, orgID, org_name):
         results = self.db_manager.view_and_sort_ByDegreeProgram(orgID) #returns lsit of dicts
@@ -1090,6 +1163,50 @@ class MainApplication:
         # Prepare data for tabulate
         headers = ["Student Number", "Name", "Degree Program", "Gender"]
         table_data = [[r['student_number'], r['member_name'], r['degree_program'], r['gender']] for r in results]
+
+        # Print the table
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+    def view_and_sort_ByBatchJoinYear(self, orgID, org_name):
+        results = self.db_manager.view_and_sort_ByBatchJoinYear(orgID) #returns lsit of dicts
+
+        if not results:
+            print(f"\nNo members found for organization '{org_name}'.")
+            return
+
+        print(f"\n=== MEMBERS OF '{org_name}' SORTED BY BATCH/JOIN-YEAR ===\n")
+        
+        # Prepare data for tabulate
+        headers = ["Student Number", "Name", "Batch (Join Year)"]
+        table_data = [[r['student_number'], r['member_name'], r['batch_year']] for r in results]
+
+        # Print the table
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+    def view_and_sort_ByCommittee(self, orgID, org_name):
+        results = self.db_manager.view_and_sort_ByCommittee(orgID)  # returns list of dicts
+
+        if not results:
+            print(f"\nNo members with roles found for organization '{org_name}'.")
+            return
+
+        print(f"\n=== MEMBERS OF '{org_name}' SORTED BY COMMITTEE ===\n")
+        print("Note: This table only reflects entries where the committee are their latest entries.") 
+
+        headers = [
+            "Student Number", 
+            "Name", 
+            "Committee",  
+            "Degree Program", 
+            "Gender"
+        ]
+        table_data = [[
+            r['student_number'],
+            r['member_name'],
+            r['committee_name'], 
+            r['degree_program'],
+            r['gender']
+        ] for r in results]
 
         # Print the table
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
@@ -1546,29 +1663,32 @@ class MainApplication:
             print("Successfully connected to the database!")
             # print(self) #why are we print(self) ing :crying_laughing:
         try:
-            while True:
-                self.main_menu()
-                choice = input("Enter a choice: ")
-                
-                if choice == '1':
-                    self.student_member_view()
-                elif choice == '2':
-                    self.student_organization_view()
+            
+                while True:
+                    try: 
+                        self.main_menu()
+                        choice = input("Enter a choice: ")
+                        
+                        if choice == '1':
+                            self.student_member_view()
+                        elif choice == '2':
+                            self.student_organization_view()
 
-                    # print("Organization view goes here")
+                            # print("Organization view goes here")
 
-                    # cursor = self.db_manager.connection.cursor() #dont forget ()
-                    # cursor.execute("SHOW TABLES")
-                    # for x in cursor:
-                    #     print(x)
+                            # cursor = self.db_manager.connection.cursor() #dont forget ()
+                            # cursor.execute("SHOW TABLES")
+                            # for x in cursor:
+                            #     print(x)
 
-                    # print("")
-                elif choice == '0':
-                    print("Exiting program...")
-                    break
-                else:
-                    print("Invalid choice. Please try again.")
-                    
+                            # print("")
+                        elif choice == '0':
+                            print("Exiting program...")
+                            break
+                        else:
+                            print("Invalid choice. Please try again.")
+                    except KeyboardInterrupt:
+                        print("\nCTRL + C triggered! Going back to main menu.") 
         finally:
             self.db_manager.close_connection()
 
