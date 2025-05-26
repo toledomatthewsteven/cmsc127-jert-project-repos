@@ -20,7 +20,8 @@ class MainApplication:
     def student_member_view(self):
         print("\n====================STUDENT VIEW====================")
         print("[1] Update a student record")
-        print("[2] See unpaid fees of a student in all of their organizations")
+        print("[2] Delete a student record") #swill delete them from the system entirely... all fees... all memberships... all member_comm... 
+        print("[3] See Unpaid Fees of a Student (in all of their organizations)")
         print("[0] Back ")
         
         choice = input("Enter a choice: ")
@@ -149,7 +150,8 @@ class MainApplication:
             print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
             print("[1] Add a Member")
             print("[2] Update a Member's Information") # 2 modes ? : update actual member table VS relocate them to a different committee (so bale they have the start date for their 1st committee, for their 2nd, etc)
-            print("[3] Delete a Member's Record") # .. should have 2 modes: disaffliation VS actually deleting them from the member table .. put deleting from member table in the user thing lol. but that's low prio.
+            print("[3] Delete a Member's Record") # .. 1 mode. disaffliation? well, yes. but in a sense delete all rows of their student number that is related to the org. as if they were NEVER a member
+
             print("[4] Search for a Member")  # 1 combined mode: search in member table AND search if they are part of the organization
             print("[5] Track a Member's Membership Status (is this the right label)")   
             print("[0] Back ")
@@ -874,24 +876,27 @@ class MainApplication:
             return
         
     def drop_organization(self):
-        organizations = self.db_manager.get_all_organizations()
-        
-        if not organizations:
-            print("\nNo organizations currently registered.")
-            return
-        else:
-            print("\nRegistered Organizations:")
-            for org in organizations:
-                print(f" + {org['org_name']}")
-        
-        org_name = input("\nEnter organization name to drop: ").strip()
-        confirm = input(f"WARNING: This will delete ALL memberships for '{org_name}'. Confirm? (y/n): ").lower()
-
-        if confirm == 'y':
-            if self.db_manager.drop_organization(org_name):
-                print("Organization deleted successfully.")
+        try: 
+            organizations = self.db_manager.get_all_organizations()
+            
+            if not organizations:
+                print("\nNo organizations currently registered.")
+                return
             else:
-                print("Deletion failed or organization not found.")
+                print("\nRegistered Organizations:")
+                for org in organizations:
+                    print(f" + {org['org_name']}")
+            
+            org_name = input("\nEnter organization name to drop: ").strip()
+            confirm = input(f"WARNING: This will delete ALL memberships for '{org_name}'. Confirm? (y/n): ").lower()
+
+            if confirm == 'y':
+                if self.db_manager.drop_organization(org_name):
+                    print("Organization deleted successfully.")
+                else:
+                    print("Deletion failed or organization not found.")
+        except KeyboardInterrupt:
+            print("\tDropping interrupted.")
 
     #  ================== MINI DIVIDER =========================
 
@@ -1169,7 +1174,7 @@ class MainApplication:
             return
         else:
             print("Successfully connected to the database!")
-            print(self)
+            # print(self) #why are we print(self) ing :crying_laughing:
         try:
             while True:
                 self.main_menu()

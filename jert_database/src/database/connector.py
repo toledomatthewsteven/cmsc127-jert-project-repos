@@ -285,6 +285,25 @@ class JERTDatabaseManager:
     # ============================================ GETTERS =========================
     # ============================================ GETTERS =========================
 
+    def get_all_organizations(self):  #damn how'd this get lost in the commits
+        cursor = self.connection.cursor(dictionary=True)
+        try: 
+            cursor.execute("""
+                SELECT organization_id, org_name
+                FROM student_organization
+                ORDER BY org_name
+            """)
+
+            org_list = cursor.fetchall()
+            cursor.close()
+            return org_list
+            
+        except Error as e:
+            print(f"Database error when fetching all organizations: {e}")
+            return []
+        finally:  
+            cursor.close()
+
     def get_member_committee_history(self, student_number, orgID):
         cursor = self.connection.cursor(dictionary=True)
         try:
