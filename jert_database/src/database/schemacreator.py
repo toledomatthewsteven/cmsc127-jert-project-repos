@@ -97,21 +97,27 @@ def create_committee_table(connection):
         print(f"Error creating committee table: {e}")
         raise
     finally:
-        cursor.close()
-# MODIFIED: same committee name can appear in different organizations, but cannot be duplicated within the same organization
+        cursor.close() 
 
-def create_committee_roles_table(connection):
+def create_committee_roles_table(connection): 
     cursor = connection.cursor()
     try:  
         cursor.execute("""
             CREATE TABLE committee_roles(
                 committee_role varchar(30) NOT NULL,
                 committee_name varchar(30) NOT NULL,
+                organization_id int NOT NULL,
 
-                CONSTRAINT committee_role_pk PRIMARY KEY(committee_name,committee_role)
+                CONSTRAINT committee_role_pk PRIMARY KEY(committee_name, organization_id, committee_role)
             )
         """) 
-        cursor.execute("ALTER TABLE committee_roles ADD CONSTRAINT committee_name_fk FOREIGN KEY(committee_name) REFERENCES committee(committee_name)")
+        cursor.execute("""
+            ALTER TABLE committee_roles
+            ADD CONSTRAINT committee_roles_committee_fk
+            FOREIGN KEY (committee_name, organization_id)
+            REFERENCES committee(committee_name, organization_id)
+            ON DELETE CASCADE
+        """)
         
         connection.commit() 
         print("\tCommittee role (relationship) table created successfully in new database!")
@@ -119,7 +125,8 @@ def create_committee_roles_table(connection):
         print(f"Error creating committee role table: {e}")
         raise
     finally:
-        cursor.close()
+        cursor.close()  # there's an ON DELETE CASCADE here that will delete the role if its associated committee gets deleted!
+
 
 def create_membership_table(connection):
     cursor = connection.cursor()
@@ -209,6 +216,7 @@ REQUIRED_TABLES = {
     'committee_roles': [
         'committee_role',
         'committee_name'
+        'organization_id'
     ],
     'membership': [
         'student_number',
