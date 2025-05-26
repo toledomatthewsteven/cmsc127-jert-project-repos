@@ -1265,3 +1265,47 @@ class JERTDatabaseManager:
 
         finally:
             cursor.close()
+
+    def see_unpaid_fees_of_student_in_all_orgs(self, student_number):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    so.org_name, 
+                    f.academic_year,
+                    CASE 
+                        WHEN f.semester = 1 THEN 'First'
+                        WHEN f.semester = 2 THEN 'Second'
+                        ELSE 'Unknown'
+                    END AS semester, 
+                    f.fee_id,
+                    f.amount,
+                    f.due_date,
+                    f.late_status
+                FROM 
+                    member m
+                JOIN 
+                    fee f ON m.student_number = f.student_number
+                JOIN 
+                    student_organization so ON f.organization_id = so.organization_id
+                WHERE 
+                    m.student_number = %s
+                    AND f.payment_status = 0  
+                ORDER BY 
+                    f.due_date ASC, so.org_name
+            """, (student_number,))
+            
+            results = cursor.fetchall()  # list of dicts
+            return results
+
+        except Error as e:
+            print(f"Database error when viewing unpaid fees: {e}") 
+            return None
+
+        finally:
+            cursor.close()

@@ -67,6 +67,12 @@ def create_fee_table(connection):
         cursor.execute("ALTER TABLE fee ADD CONSTRAINT fee_id_fk FOREIGN KEY(student_number) REFERENCES member(student_number)")
         cursor.execute("ALTER TABLE fee ADD CONSTRAINT fee_org_fk FOREIGN KEY(organization_id) REFERENCES student_organization(organization_id)")
 
+        cursor.execute('''ALTER TABLE fee 
+            DROP COLUMN late_status,
+            ADD COLUMN late_status BOOLEAN 
+                AS (CASE WHEN CURDATE() > due_date AND payment_status = 0 THEN 1 ELSE 0 END) VIRTUAL;
+        ''')
+
         connection.commit() 
         print("\tFee table created successfully in new database!")
     except Error as e:
@@ -74,6 +80,16 @@ def create_fee_table(connection):
         raise
     finally:
         cursor.close()
+
+# NOTE FOR EDRIC AND EDRIAN: SO THAT U DONT NEED TO RESTART UR DATABASE FROM SCRATCH (given this new schema update again): 
+# COPY AND PASTE THE FF (WITHOUT THE PYTHON #) INTO YOUR TERMINAL WHERE U HAVE MARIADB OPEN AND ALSO THE DATABASE URE USING
+# ALTER TABLE fee
+# DROP COLUMN late_status,
+# ADD COLUMN late_status BOOLEAN AS (CASE WHEN CURDATE() > due_date AND payment_status = 0 THEN 1 ELSE 0 END) VIRTUAL;
+
+# https://dev.mysql.com/doc/refman/8.0/en/create-table-generated-columns.html
+# "VIRTUAL: Column values are not stored, but are evaluated when rows are read, immediately after any BEFORE triggers. A virtual column takes no storage."
+
 
 def create_committee_table(connection):
     cursor = connection.cursor()
