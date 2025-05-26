@@ -150,7 +150,7 @@ class MainApplication:
             print("[1] See all registered organizations")
             print("[2] Register an organization") 
             print("[3] Inspect an organization") 
-            print("[4] Drop/Delete an Organization") #TODO: touchup to delete all necessary components as well
+            # print("[4] Drop/Delete an Organization") #TODO: touchup to delete all necessary components as well.. actually, just wont implement this bruh
             print("[0] Back ")
             print("")
 
@@ -186,9 +186,9 @@ class MainApplication:
                 
                 continue
 
-            elif choice == '4':
-                self.drop_organization()
-                continue
+            # elif choice == '4':
+            #     self.drop_organization()
+            #     continue
             
             elif choice == '0':
                 break
@@ -287,6 +287,67 @@ class MainApplication:
                 print("Invalid choice. Please try again.")
 
 
+    def delete_member_record(self, orgID, org_name): #TODO: THIS. later......
+        print()
+        print(f"\n========== Delete Member Interface: '{org_name}' ==========")
+        print(f"\tWarning: Deleting a member's record will delete all their associated fees, committee/role history, and membership information.")
+        print(f"\tWarning: Deleting a member's record for organization '{org_name}' will not delete their record from this entire database.")
+        print(f"\n========== Delete Member Interface: '{org_name}' ==========")
+        
+        try:
+            student_number = input("Enter student number of member to delete from organizational records: ").strip()
+            
+            history = self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, org_name) # Check if student exists in membership relationship
+
+            if not history:
+                print(f"\tSeems like student number '{student_number}' is not a member of '{org_name}'. Aborting deletion.")
+                return
+            
+            # Print it lang lol
+            
+            member_table_entry = self.db_manager.get_student_record_by_studentNumber(student_number)
+            if member_table_entry: 
+                member_table_entry['graduation_status'] = "Not Yet Graduated" if member_table_entry['graduation_status'] == 0 else "Graduated" #readability concern 
+                member_table_entry['graduation_date'] = "N/A" if member_table_entry['graduation_date'] is None else member_table_entry['graduation_date']
+
+                better_names = { # mapping the keys to more readable headers
+                    'first_name': 'First Name',
+                    'middle_name': 'Middle Name',
+                    'last_name': 'Last Name',
+                    'student_number': 'Student Number',
+                    'degree_program': 'Degree Program',
+                    'gender': 'Gender',
+                    'graduation_status': 'Graduation Status',
+                    'graduation_date': 'Graduation Date'
+                }
+
+                headers = [better_names.get(key, key) for key in member_table_entry.keys()]
+                values = [member_table_entry[key] for key in member_table_entry.keys()]
+
+                print(tabulate([values], headers=headers, tablefmt="grid"))
+            else:
+                print(f"No record found for student number {student_number}.")
+                return 
+            
+            confirm = input(f"Are you sure you want to proceed with deleting this member? (y/n): ").lower()
+            if confirm == 'y':
+
+                #drop from membership
+                #drop all fees related to them (AND MUST BE UNDER THE ORG... lol)
+                #drop all member_committee records related to them (AND THE ORG)
+
+                self.db_manager.drop_member_committee_records_from_org(student_number, orgID)
+                self.db_manager.drop_fees_for_member_from_org(student_number, orgID)
+                self.db_manager.drop_membership_from_org(student_number, orgID)
+                print("Member records deleted successfully.")
+                
+            else: 
+                print("\tAborting deletion of member record.")
+                return
+        except KeyboardInterrupt:
+            print("Update process aborted.")
+            return 
+
     def search_org_member_record(self, orgID, org_name):
         print(f"\n========== Search Member Interface: '{org_name}' ==========")
         try:
@@ -371,23 +432,7 @@ class MainApplication:
         semester_num = 1 if semester_str.lower() == 'first' else 2
         
         return (year_start, semester_num)
-
-    def delete_member_record(self, orgID, org_name): #TODO: THIS. later......
-        print()
-        print(f"\n========== Delete Member Interface: '{org_name}' ==========")
-        print(f"\tWarning: Deleting a member's record will delete all their associated fees, committee/role history, and membership information.")
-        print(f"\tWarning: Deleting a member's record for organization '{org_name}' will not delete their record from this entire database.")
-        print(f"\n========== Delete Member Interface: '{org_name}' ==========")
-        confirm = input(f"Are you sure you want to proceed? (y/n): ").lower()
-        if confirm == 'y':
-            if True: 
-                print("Member record deleted successfully.")
-            else:
-                print("Member record deletion failed.")
-        else: 
-            print("\tAborting deletion of member record.")
-            return
-
+    
 
 
     def update_member(self, orgID, org_name):
@@ -794,7 +839,7 @@ class MainApplication:
             print("[1] Create a Committee/Team")    
             print("[2] View All Committees/Teams and their Roles") 
             #idgaf to implemenet better committee management. too much na yan.
-            print("[3] Dissolve a Committee/Team (UNINMPLEMENTED)")  
+            # print("[3] Dissolve a Committee/Team (UNINMPLEMENTED)")  
             print("[0] Back ")
             print("")
 
@@ -820,9 +865,9 @@ class MainApplication:
                             print("    (No roles assigned)")
                 continue 
 
-            if choice == '3':
-                print("3")
-                continue 
+            # if choice == '3':
+            #     print("3")
+            #     continue 
             
             elif choice == '0':
                 break

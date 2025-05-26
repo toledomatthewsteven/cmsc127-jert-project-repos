@@ -1,1 +1,1 @@
-create_newStudentRecord
+delete_member_record
