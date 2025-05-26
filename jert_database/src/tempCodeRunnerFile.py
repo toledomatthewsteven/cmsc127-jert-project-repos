@@ -1,1 +1,1 @@
-register_member_under_committee_with_role
+create_newStudentRecord
