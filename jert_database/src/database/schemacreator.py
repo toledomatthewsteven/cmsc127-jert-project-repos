@@ -215,7 +215,7 @@ REQUIRED_TABLES = {
     ],
     'committee_roles': [
         'committee_role',
-        'committee_name'
+        'committee_name',
         'organization_id'
     ],
     'membership': [
