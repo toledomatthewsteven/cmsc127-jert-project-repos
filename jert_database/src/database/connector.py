@@ -310,9 +310,7 @@ class JERTDatabaseManager:
             cursor.execute("""
                 SELECT committee_name, committee_role, academic_year, semester, membership_status
                 FROM member_committee
-                WHERE student_number = %s AND committee_name IN (
-                    SELECT committee_name FROM committee WHERE organization_id = %s
-                )
+                WHERE student_number = %s AND organization_id = %s
                 ORDER BY academic_year DESC, semester DESC
             """, (student_number, orgID))
             return cursor.fetchall()
@@ -321,6 +319,7 @@ class JERTDatabaseManager:
             return []
         finally:
             cursor.close()
+
 
     def get_membership_record(self, student_number, orgID):
         cursor = self.connection.cursor(dictionary=True)
@@ -585,9 +584,9 @@ class JERTDatabaseManager:
 
             # Insert into member_committee proper
             cursor.execute("""
-                INSERT INTO member_committee (student_number, committee_name, academic_year, semester, membership_status, committee_role)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (student_number, committeeName, academic_year, semester, membership_status, roleName))
+                INSERT INTO member_committee (student_number, organization_id, committee_name, academic_year, semester, membership_status, committee_role)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (student_number, orgID, committeeName, academic_year, semester, membership_status, roleName))
 
             self.connection.commit()
             return True
@@ -757,6 +756,72 @@ class JERTDatabaseManager:
     # ============================================ DROPPERS =========================
     # ============================================ DROPPERS =========================
     # ============================================ DROPPERS =========================
+
+    def drop_member_committee_records_from_org(self, student_number, orgID):
+        cursor = self.connection.cursor()
+        try:
+            sqlStatement = """
+                DELETE mc
+                FROM member_committee mc
+                JOIN committee_roles cr ON mc.committee_name = cr.committee_name AND mc.committee_role = cr.committee_role
+                JOIN committee c ON cr.committee_name = c.committee_name AND cr.organization_id = c.organization_id
+                WHERE mc.student_number = %s AND c.organization_id = %s
+            """
+            cursor.execute(sqlStatement, (student_number, orgID))
+            self.connection.commit()
+            print(f"\tDeleted {cursor.rowcount} entries from member_committee for student number '{student_number}' in organization with id {orgID}.")
+            cursor.close()
+            return True
+        except Error as e:
+            print(f"Error deleting member from organization historical records: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+    
+    def drop_fees_for_member_from_org(self, student_number, orgID):
+        cursor = self.connection.cursor()
+        try:
+            sqlStatement = """
+                DELETE FROM fee
+                WHERE student_number = %s AND organization_id = %s
+            """
+            cursor.execute(sqlStatement, (student_number, orgID))
+            self.connection.commit()
+            print(f"\tDeleted {cursor.rowcount} fee records for student {student_number} in organization with id {orgID}.")
+            cursor.close()
+            return True
+        except Error as e:
+            print(f"Error deleting fee records: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+
+    def drop_membership_from_org(self, student_number, org_id):
+        cursor = self.connection.cursor()
+        try: 
+            cursor.execute("""
+                DELETE FROM membership
+                WHERE student_number = %s AND organization_id = %s
+            """, (student_number, org_id))
+            
+            self.connection.commit()
+            
+            if cursor.rowcount > 0:
+                print(f"\tDeleted membership for student '{student_number}' under org ID '{org_id}'.")
+                return True
+            else:
+                print(f"No membership record found for student '{student_number}' under org ID '{org_id}'.")
+                return False
+        
+        except Error as e:
+            print(f"Error deleting membership: {e}")
+            self.connection.rollback()
+            return False
+        
+        finally:
+            cursor.close()
+
+
 
     def drop_organization(self, orgName):
         cursor = self.connection.cursor()
