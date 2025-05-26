@@ -495,6 +495,39 @@ class JERTDatabaseManager:
             cursor.close()
 
 
+    def pay_fee(self, orgID, fee_id):
+        cursor = self.connection.cursor(dictionary=True)
+        try: 
+            cursor.execute("""
+                UPDATE fee
+                SET payment_status = 1
+                WHERE organization_id = %s AND fee_id = %s  
+                           
+                           
+            """, (orgID, fee_id))
+
+        except Error as e:
+            print(f"Databse error when paying: {e}")
+            return None
+        finally:
+            cursor.close()
+
+    def get_fee_by_fee_id(self, orgID, fee_id):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT * 
+                FROM fee
+                where fee_id = %s and organization_id = %s
+            """, (fee_id, orgID))
+            result = cursor.fetchone()
+            cursor.close()
+            return result
+        except Error as e:
+            print(f"Database error looking for specified fee.")
+            return None
+        finally:
+            cursor.close()
     # ============================================ REGISTRATIONS =========================
     # ============================================ REGISTRATIONS =========================
     # ============================================ REGISTRATIONS =========================
@@ -824,5 +857,110 @@ class JERTDatabaseManager:
             print(f"Database error when viewing/sorting by degree program: {e}")
             return None
 
+        finally:
+            cursor.close()
+
+
+#GETTERS FOR REPORTS FROM EDRIC
+    def get_alumni_from_date(self, orgID, date):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+            SELECT 
+            m.student_number,
+            CASE 
+                WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+            END AS member_name,
+            m.degree_program, 
+            m.gender,
+            m.graduation_date, 
+            mship.batch_year
+            FROM 
+                member m  
+            JOIN
+                membership mship ON m.student_number = mship.student_number
+            WHERE
+                mship.organization_id = 1 AND 
+                m.graduation_date IS NOT NULL AND 
+                m.graduation_date <= 2025-07-01
+            ORDER BY
+                m.graduation_date, 
+                m.last_name,
+                m.first_name               
+            
+            """, (orgID, date))
+            results = cursor.fetchall()
+            return results
+        except Error as e:
+            print(f"Database error trying to fetch student.")
+            return None
+        finally:
+            cursor.close()
+
+    def get_amount_fee(self, orgID, date): #REPORT 9 GET ALL PAID/UNPAID FEES AS OF GIVEN DATE
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+            SELECT 
+            so.org_name,
+            SUM(CASE WHEN f.payment_status = TRUE THEN f.amount ELSE 0 END) AS paid,
+            SUM(CASE WHEN f.payment_status = FALSE THEN f.amount ELSE 0 END) AS unpaid
+            FROM 
+                fee f
+            JOIN 
+                student_organization so ON f.organization_id = so.organization_id
+            WHERE 
+                f.organization_id = %s AND 
+                f.due_date <= %s
+            GROUP BY 
+                so.org_name;                 
+            
+            """, (orgID, date))
+            results = cursor.fetchall()
+            return results
+        except Error as e:
+            print(f"Database error trying to fetch student.")
+            return None
+        finally:
+            cursor.close()
+
+    def get_highest_debt_member(self, orgID, semester, acad_year): #REPORT 10
+        cursor = self.connection.cursor(dictionary=True)
+        try: 
+            cursor.execute("""
+                SELECT 
+                m.student_number,
+                CASE 
+                    WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                    ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                END AS member_name,
+                m.degree_program, 
+                m.gender,
+                f.academic_year,
+                f.semester,
+                SUM(CASE WHEN (f.payment_status = false AND f.late_status = true) THEN f.amount ELSE 0 END) as `Debt this Semester`
+                FROM 
+                    member m 
+                JOIN 
+                    fee f ON m.student_number = f.student_number
+                WHERE
+                    f.payment_status = false AND
+                    f.academic_year = %s AND
+                    f.semester = %s AND 
+                    f.organization_id = %s
+                GROUP BY 
+                    m.student_number,         
+                    f.academic_year,
+                    f.semester
+                ORDER BY
+                    `Debt this Semester` DESC  LIMIT 1 
+
+                        """, (acad_year, semester, orgID))
+            results = cursor.fetchone()
+            return results
+        except Error as e:
+            print(f"Database error trying to fetch student.")
+            return None
         finally:
             cursor.close()

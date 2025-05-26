@@ -1,6 +1,5 @@
-from datetime import datetime
+import datetime
 from database.connector import JERTDatabaseManager
-from tabulate import tabulate
 
 class MainApplication:
     def __init__(self):
@@ -19,17 +18,14 @@ class MainApplication:
 
     def student_member_view(self):
         print("\n====================STUDENT VIEW====================")
-        print("[1] Update a student record")
-        print("[2] See unpaid fees of a student in all of their organizations")
-        print("[0] Back ")
+        print("[1] See unpaid fees")
+        print("[0] Back to main menu")
         
         choice = input("Enter a choice: ")
         if choice == '1':
             student_number = input("Enter student number (20XX-XXXXX): ")
-            
+            # add/perform database operations using self.db_manager.get_connection() ,, maybe in a different class?
 
-        elif choice == '2':
-            student_number = input("Enter student number (20XX-XXXXX): ")
 
 
 
@@ -48,7 +44,7 @@ class MainApplication:
             print("[2] Register an organization") 
             print("[3] Inspect an organization") 
             print("[4] Drop/Delete an Organization") 
-            print("[0] Back ")
+            print("[0] Back to main menu")
             print("")
 
             choice = input("Enter a choice: ")
@@ -104,7 +100,7 @@ class MainApplication:
             print("[2] Fee Management") 
             print("[3] Committee Management")  
             print("[4] Generate a Report")  
-            print("[0] Back ")
+            print("[0] Back to main menu")
             print("")
 
             choice = input("Enter a choice: ")
@@ -148,11 +144,11 @@ class MainApplication:
         while True:
             print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
             print("[1] Add a Member")
-            print("[2] Update a Member's Information") # 2 modes ? : update actual member table VS relocate them to a different committee (so bale they have the start date for their 1st committee, for their 2nd, etc)
-            print("[3] Delete a Member's Record") # .. should have 2 modes: disaffliation VS actually deleting them from the member table .. put deleting from member table in the user thing lol. but that's low prio.
-            print("[4] Search for a Member")  # 1 combined mode: search in member table AND search if they are part of the organization
+            print("[2] Update a Member's Information.") 
+            print("[3] Delete a Member's Record") 
+            print("[4] Search for a Member")  
             print("[5] Track a Member's Membership Status (is this the right label)")   
-            print("[0] Back ")
+            print("[0] Back to main menu")
             print("")
 
             choice = input("Enter a choice: ")
@@ -162,7 +158,7 @@ class MainApplication:
                 continue
             
             if choice == '2' : 
-                self.update_member(orgID, org_name)
+                print("2")
                 continue
 
             elif choice == '3':
@@ -182,346 +178,72 @@ class MainApplication:
             else:
                 print("Invalid choice. Please try again.")
 
-    def update_member(self, orgID, org_name):
-        print(f"\n========== Update Interface: '{org_name}' ==========")
-        try:
-            student_number = input("Enter student number of member to update: ").strip()
-            
-            history = self.db_manager.get_member_committee_history(student_number, orgID) # Check if student exists in committee history
-
-            if not history:
-                print(f"\tNo committee records found for student number '{student_number}' in '{org_name}'.")
-                return
-            
-            table_data = [[
-                record['committee_name'],
-                record['committee_role'],
-                record['academic_year'],
-                record['semester'],
-                record['membership_status']
-            ] for record in history]
-
-            print(f"\n=== Committee History for Student Number '{student_number}' ===") # Print as table
-            print(tabulate(table_data, headers=["Committee", "Role", "Academic Year", "Semester", "Status"], tablefmt="grid"))
-
-            # Choose update option
-            while True:
-                print("\nDo you want to:")
-                print("[1] Update an existing entry (change status/committee/role in a past AY & Sem)")
-                print("[2] Add a new committee/role/status entry (new assignment/adding history log)")
-                # ugh should i even entertain the case where they want to update the fucking join_date or batch year.. .
-                    #there's so much dependent on that and anomalies that could be caused .... 
-                    #it's not that relevant in our scope rn sooo ill leave it alone. FUCK OFF!
-                #t0d0: ... kill urself
-
-
-
-                choice = input("Enter your choice (1/2): ").strip()
-
-                if choice == '1':
-                    print("\tProceeding to update an existing entry...")
-                    self.update_existing_committee_entry(orgID, org_name, student_number, history)
-                    break 
-                elif choice == '2':
-                    print("\tProceeding to add a new assignment...")
-                    self.add_new_committee_assignment(orgID, org_name, student_number, history)
-                    break 
-                else:
-                    print("Invalid choice. Please enter 1 or 2.")
-
-
-        except KeyboardInterrupt:
-            print("Update process aborted.")
-            return
-
-    def update_existing_committee_entry(self, orgID, org_name, student_number, history):
-        print("\n=== UPDATING EXISTING LOG ===")
-
-        academic_year = input("Enter academic year of log to edit (format YYYY-YYYY, e.g. 2024-2025): ").strip()
-        semester = input("Enter semester of log to edit ('First' or 'Second'): ").strip().capitalize()
-
-        #no need to rlly validate these since we are searching for it anyway
-        #RESOLVED t0d0: search in history if there is a match !! if none, gtfo. 
-        matching_records = [
-            rec for rec in history
-            if rec['academic_year'] == academic_year and rec['semester'] == semester
-        ]
-        if not matching_records:
-            print(f"\tNo existing committee entry found for {academic_year}'s {semester} semester. Aborting update.")
-            return None
-
-        committees_with_roles = self.db_manager.get_committees_and_roles_by_orgID(orgID) # Fetch committees and roles
-
-        if not committees_with_roles:
-            print(f"\n\tNo committees currently registered under '{org_name}'.")
-            print(f"\n\tCannot proceed with committee and role assignment.")
-            return None
-
-        committee_roles_dict = {}  # Organize committees and roles for validation
-        for record in committees_with_roles:
-            comm_name = record['committee_name']
-            role_name = record['committee_role']
-            if comm_name not in committee_roles_dict:
-                committee_roles_dict[comm_name] = []
-            committee_roles_dict[comm_name].append(role_name)
-
-        print("\nAvailable Committees and Their Roles:")
-        for comm, roles in committee_roles_dict.items():
-            print(f" + {comm}: {', '.join(roles)}")
-
-        print()
-        while True:  # Committee selection with validation
-            assigned_committee = input("Enter committee to reassign the member to: ").strip()
-            if not assigned_committee:
-                print("\tError: Committee name cannot be empty.")
-                continue
-
-            if assigned_committee not in committee_roles_dict:
-                print(f"\tError: Committee '{assigned_committee}' does not exist under '{org_name}'.")
-                print("\tPlease choose from the listed committees.")
-                continue
-            break
-
-        available_roles = committee_roles_dict[assigned_committee]  # Role selection with validation
-        if not available_roles:
-            print(f"\tNote: Committee '{assigned_committee}' has no predefined roles... Assigning as a general member.")
-            assigned_role = None
-        else:
-            while True:
-                assigned_role = input(f"Enter role to assign in '{assigned_committee}': ").strip()
-                if not assigned_role:
-                    print("Error: Role cannot be empty.")
-                    continue
-
-                if assigned_role not in available_roles:
-                    print(f"\tError: Role '{assigned_role}' does not exist in committee '{assigned_committee}'.")
-                    print(f"\tAvailable roles: {', '.join(available_roles)}")
-                    continue
-                break  
-
-        # Membership status input
-        valid_statuses = ['Active', 'Inactive', 'Expelled', 'Suspended', 'Alumni']
-        while True:
-            membership_status = input(f"Enter membership status of current membership  {valid_statuses}: ").strip().capitalize()
-            if membership_status in valid_statuses:
-                break
-            print(f"Error: Membership status must be one of {valid_statuses}.")
-
-
-        if self.db_manager.update_existing_committee_log(student_number, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
-            print(f"\tSuccessfully updated log!")
-            return True
-        else:
-            print("\n\tFailed to update log.")
-            return False
-
-    def add_new_committee_assignment(self, orgID, org_name, student_number, history): #recycled most of this from new member creation
-        print("\n=== REASSIGNMENT OF COMMITTEE, ROLE, OR STATUS ===")
-
-        committees_with_roles = self.db_manager.get_committees_and_roles_by_orgID(orgID) # Fetch committees and roles
-
-        if not committees_with_roles:
-            print(f"\n\tNo committees currently registered under '{org_name}'.")
-            print(f"\n\tCannot proceed with committee and role assignment.")
-            return None
-
-        committee_roles_dict = {}  # Organize committees and roles for validation
-        for record in committees_with_roles:
-            comm_name = record['committee_name']
-            role_name = record['committee_role']
-            if comm_name not in committee_roles_dict:
-                committee_roles_dict[comm_name] = []
-            committee_roles_dict[comm_name].append(role_name)
-
-        print("\nAvailable Committees and Their Roles:")
-        for comm, roles in committee_roles_dict.items():
-            print(f" + {comm}: {', '.join(roles)}")
-
-        print()
-        while True:  # Committee selection with validation
-            assigned_committee = input("Enter committee to reassign the member to: ").strip()
-            if not assigned_committee:
-                print("\tError: Committee name cannot be empty.")
-                continue
-
-            if assigned_committee not in committee_roles_dict:
-                print(f"\tError: Committee '{assigned_committee}' does not exist under '{org_name}'.")
-                print("\tPlease choose from the listed committees.")
-                continue
-            break
-
-        available_roles = committee_roles_dict[assigned_committee]  # Role selection with validation
-        if not available_roles:
-            print(f"\tNote: Committee '{assigned_committee}' has no predefined roles... Assigning as a general member.")
-            assigned_role = None
-        else:
-            while True:
-                assigned_role = input(f"Enter role to assign in '{assigned_committee}': ").strip()
-                if not assigned_role:
-                    print("Error: Role cannot be empty.")
-                    continue
-
-                if assigned_role not in available_roles:
-                    print(f"\tError: Role '{assigned_role}' does not exist in committee '{assigned_committee}'.")
-                    print(f"\tAvailable roles: {', '.join(available_roles)}")
-                    continue
-                break
-
-        while True: # resolved t0d0: tbh there should be a check here if the new update goes to a year EARLIER than their org join year (found in membership relationship table)
-            academic_year = input("Enter academic year of start of new committee residence (format YYYY-YYYY, e.g. 2024-2025): ").strip()
-            semester = input("Enter semester of current membership ('First' or 'Second'): ").strip().capitalize()
-
-            # Validate academic year format
-            if not (len(academic_year) == 9 and academic_year[4] == '-' and
-                    academic_year[:4].isdigit() and academic_year[5:].isdigit() and
-                    int(academic_year[5:]) == int(academic_year[:4]) + 1):
-                print("\tError: Academic year must be in the format YYYY-YYYY with consecutive years.")
-                continue
-
-            # Validate semester input
-            if semester not in ['First', 'Second']:
-                print("\tError: Semester must be 'First' or 'Second'.")
-                continue
-
-            acad_year_start = int(academic_year[:4])
-
-            membership = self.db_manager.get_membership_record(student_number, orgID)
-            if not membership:
-                print(f"\tWarning: No membership record found for student {student_number} in organization {orgID}. Are you really a member?")
-                print('\tAborting operation.')
-                return
-
-            join_year = membership['batch_year']
-            if acad_year_start < join_year:
-                print(f"\tError: Academic year start {acad_year_start} is earlier than the student’s org join year ({join_year}). Please enter a valid academic year.")
-                continue
-
-            # Check for duplicate entry in history !!
-            duplicate_entry = any(
-                record['academic_year'] == academic_year and record['semester'] == semester
-                for record in history
-            )
-            if duplicate_entry:
-                print(f"\tError: An entry for academic year '{academic_year}' and semester '{semester}' already exists for this student.")
-                print("\tPlease enter a different academic year or semester, or please cancel this assignment to use the proper function call.")
-                continue
-
-            # Passed all checks! Exit loop
-            break
-
-        # Membership status input
-        valid_statuses = ['Active', 'Inactive', 'Expelled', 'Suspended', 'Alumni']
-        while True:
-            membership_status = input(f"Enter membership status of current membership  {valid_statuses}: ").strip().capitalize()
-            if membership_status in valid_statuses:
-                break
-            print(f"Error: Membership status must be one of {valid_statuses}.")
-
-        if self.db_manager.register_member_under_committee_with_role(
-            student_number, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
-
-            print(f"\tSuccessfully assigned member to committee '{assigned_committee}' with role '{assigned_role}' with status {membership_status}!")
-            return True
-        else:
-            print("\n\tFailed to assign member to a committee and role.")
-            return False
-        
-
-
-
-
-
 
     def add_member(self, orgID, org_name):
-        try: 
-            newMember_studentnumber = input("Enter student number of member: ")
-            newMember_studentrecord = self.db_manager.get_student_record_by_studentNumber(newMember_studentnumber)
+        newMember_studentnumber = input("Enter student number of member: ")
+        newMember_studentrecord = self.db_manager.get_student_record_by_studentNumber(newMember_studentnumber)
 
-            if not newMember_studentrecord:
-                print(f"\tStudent with student number {newMember_studentnumber} not found in this database's student records.")
-                while True:
-                    decision_createNewStudent = input("Create a new student record? (y/n): ")
-                    if decision_createNewStudent == 'y':
-                        # assign newMember_studentnumber to the created student number
-                        newMember_studentnumber = self.create_newStudentRecord()
-                        if not newMember_studentnumber:
-                            print("\tStudent registration failed. Student number is invalid.")
-                            return  # early exit because no valid student number
-                        break
-                    elif decision_createNewStudent == 'n':
-                        print("Student record creation aborted.")
-                        return  # early exit to skip committee assignment
-                    else:
-                        print("Invalid choice. Please try again.")
-            else:
-                print(f"\tStudent with student number '{newMember_studentnumber}' found!")
+        if not newMember_studentrecord:
+            print(f"\tStudent with student number {newMember_studentnumber} not found in this database's student records.")
+            while True:
+                decision_createNewStudent = input("Create a new student record? (y/n): ")
+                if decision_createNewStudent == 'y':
+                    # assign newMember_studentnumber to the created student number
+                    newMember_studentnumber = self.create_newStudentRecord()
+                    if not newMember_studentnumber:
+                        print("\tStudent registration failed. Student number is invalid.")
+                        return  # early exit because no valid student number
+                    break
+                elif decision_createNewStudent == 'n':
+                    print("Student record creation aborted.")
+                    return  # early exit to skip committee assignment
+                else:
+                    print("Invalid choice. Please try again.")
+        else:
+            print(f"\tStudent with student number '{newMember_studentnumber}' found!")
 
-            already_member = self.db_manager.get_or_check_studentNumber_in_Membership(newMember_studentnumber, orgID, org_name)
-            if already_member:
-                print(f"\tWarning: Student '{newMember_studentnumber}' is already registered as a member of '{org_name}'.")  
-                print("\tMember addition aborted.")
-                return
+        already_member = self.db_manager.get_or_check_studentNumber_in_Membership(newMember_studentnumber, orgID, org_name)
+        if already_member:
+            print(f"\tWarning: Student '{newMember_studentnumber}' is already registered as a member of '{org_name}'.")  
+            print("\tMember addition aborted.")
+            return
 
-            # committee assignment for a valid student number (found or created)
-            committee_acad_year_start = self.committee_and_role_assignment(orgID, org_name, newMember_studentnumber)
-            if not committee_acad_year_start:
-                print("Committee and role assignment failed or skipped.")
-                return
-
-            committee_acad_year_end = committee_acad_year_start + 1  # compute academic year end
-
-            while True: 
-                while True: # Prompt for batch year
-                    batch_year_input = input("Enter batch join-year (YYYY): ").strip()
-                    if batch_year_input.isdigit() and len(batch_year_input) == 4:
-                        batch_year = int(batch_year_input)
-                        if batch_year > committee_acad_year_end:
-                            print(f"Warning: Batch year ({batch_year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid year.")
-                        else:
-                            break
-                    else:
-                        print("Invalid batch join-year. Please enter a 4-digit year.")
-
-                # Prompt for join date
-                while True:
-                    join_date_input = input("Enter join date (YYYY-MM-DD) [default today]: ").strip()
-                    if not join_date_input:
-                        join_date = None  # default to today
-                        join_date_obj = datetime.today()
-                    else:
-                        try:
-                            join_date_obj = datetime.strptime(join_date_input, "%Y-%m-%d")
-                            join_date = join_date_input
-                        except ValueError:
-                            print("Invalid date format. Please enter a valid date in YYYY-MM-DD format.")
-                            continue  # re-prompt for join date
-                    
-                    if join_date_obj.year > committee_acad_year_end:
-                        print(f"Warning: Join date year ({join_date_obj.year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid date.")
-                        continue  # re-prompt for join date
-                    
-                    break  # valid join date obtained
-
-                if join_date_obj.year != batch_year: # check batch year and join date year consistency (batch 2025 mmust join in year 2025 itself)
-                    print(f"Warning: Join date year ({join_date_obj.year}) and batch year ({batch_year}) mismatch. Restarting input.")
-                    continue  # restart entire loop
-
-                # If all validations passed
+        # committee assignment for a valid student number (found or created)
+        assigned = self.committee_and_role_assignment(orgID, org_name, newMember_studentnumber)
+        if not assigned:
+            print("Committee and role assignment failed or skipped.")
+            return
+        
+        while True:
+            batch_year_input = input("Enter batch join-year (YYYY): ").strip()
+            if batch_year_input.isdigit() and len(batch_year_input) == 4:
+                batch_year = int(batch_year_input)
                 break
-
-
-            # Register membership!!!! no need a separate divider area for it
-            if self.db_manager.register_membership(newMember_studentnumber, orgID, batch_year, join_date):
-                print(f"\tMembership for student '{newMember_studentnumber}' in org '{org_name}' registered successfully!")
             else:
-                print("Failed to register membership.")
-                return #dk how to handle case where committee assignment works but membership dont :crying_laughing:
-            
-            print("\tMember-adding Operation Successful!")
-            return 
-        except KeyboardInterrupt:
-            print("\nRegistration cancelled.")
-            return None
+                print("Invalid batch join-year. Please enter a 4-digit year.")
+
+        while True:
+            join_date_input = input("Enter join date (YYYY-MM-DD) [default today]: ").strip()
+            if not join_date_input:
+                join_date = None  # default to today
+                break
+            try:
+                from datetime import datetime
+                datetime.strptime(join_date_input, "%Y-%m-%d")
+                join_date = join_date_input
+                break
+            except ValueError:
+                print("Invalid date format. Please enter a valid date in YYYY-MM-DD format.")
+
+        # Register membership!!!! no need a separate divider area for it
+        if self.db_manager.register_membership(newMember_studentnumber, orgID, batch_year, join_date):
+            print(f"\tMembership for student '{newMember_studentnumber}' in org '{org_name}' registered successfully!")
+        else:
+            print("Failed to register membership.")
+            return #dk how to handle case where committee assignment works but membership dont :crying_laughing:
+        
+        print("\tMember-adding Operation Successful!")
+        return 
 
 
 # i should probably try to OOP this..... UGHHHHHH!!!!!
@@ -542,7 +264,6 @@ class MainApplication:
     def fees_management_menu(self, orgID, org_name):
         while True:
             print(F"\n====================FEES MANAGEMENT: '{org_name}'====================")
-
             print("[1] Create an Invoice")    
             print("[2] Pay a Fee")    
             print("[3] Show all fees")  
@@ -556,7 +277,7 @@ class MainApplication:
                 continue 
             
             if choice == '2':
-                print("2")
+                self.pay(orgID)
                 continue
 
             if choice == '3':
@@ -591,7 +312,7 @@ class MainApplication:
             print("[2] View All Committees/Teams and their Roles") 
             #idgaf to implemenet better committee management. too much na yan.
             print("[3] Dissolve a Committee/Team (UNINMPLEMENTED)")  
-            print("[0] Back ")
+            print("[0] Back to main menu")
             print("")
 
             choice = input("Enter a choice: ")
@@ -688,7 +409,7 @@ class MainApplication:
     def report_generation_menu(self, orgID, org_name):
         while True:
             print(F"\n====================REPORT GENERATOR: '{org_name}'====================")
-            print("[1] View and Sort All Members of the Organization")
+            print("[1] Filter and View All Members of the Organization")
             print("[2] View Members of the Organization with Unpaid Membership Fees for a Given Sem/AY")
             # print("[3] View a Member's Unpaid Membership Fees for All Organizations") #this dont belong here
             print("[3] View All Executive Committee Members of the Organization for a Given AY")
@@ -698,13 +419,13 @@ class MainApplication:
             print("[7] View All Alumni Members of the Organization as of a Given Date")
             print("[8] View the Total Amount of Paid and Unpaid Fees of the Organization as of a Given Date")
             print("[9] View the Member(s) of the Organization with the Highest Debt for a Given Sem/AY")
-            print("[0] Back")
+            print("[0] Back to main menu")
             
 
             choice = input("Enter a choice: ")
 
             if choice == '1':
-                self.view_and_sort_all_members_menu(orgID, org_name)
+                print("1")
                 continue 
 
             if choice == '2':
@@ -728,15 +449,15 @@ class MainApplication:
                 continue 
 
             if choice == '7':
-                print("7")
+                self.get_alumni_from_date(orgID)
                 continue 
 
             if choice == '8':
-                print("8")
+                self.get_amount_fee(orgID)
                 continue 
 
             if choice == '9':
-                print("9")
+                self.get_highest_debt(orgID)
                 continue 
 
             
@@ -745,76 +466,7 @@ class MainApplication:
             else:
                 print("Invalid choice. Please try again.")
 
-    def view_and_sort_all_members_menu(self, orgID, org_name):
-        while True:
-            print(F"\n==================== [1] View and Sort All Members of the Organization : '{org_name}'====================")
-            print("[1] Sort by Role")
-            print("[2] Sort by Status") 
-            print("[3] Sort by Gender")
-            print("[4] Sort by Degree Program") #starting here coz it's easiest and we have a statement already
-            print("[5] Sort by Batch (year of membership)")
-            print("[6] Sort by Committee")
-            print("[0] Back")
-
-            choice = input("Enter a choice: ")
-
-            if choice == '1':
-                print("1")
-                continue 
-
-            if choice == '2': #sort by status
-                # self.view_and_sort_ByStatus(orgID, org_name)
-                continue 
-
-            if choice == '3':
-                print("3")
-                continue 
-
-            if choice == '4':
-                self.view_and_sort_ByDegreeProgram(orgID, org_name)
-                continue 
-
-            if choice == '5':
-                print("5")
-                continue 
-
-            if choice == '6':
-                print("6")
-                continue 
-            
-            elif choice == '0':
-                break
-            else:
-                print("Invalid choice. Please try again.")
-
-    def view_and_sort_ByStatus(self, orgID, org_name):
-        print()
-
-    def view_and_sort_ByDegreeProgram(self, orgID, org_name):
-        results = self.db_manager.view_and_sort_ByDegreeProgram(orgID) #returns lsit of dicts
-
-        if not results:
-            print(f"\nNo members found for organization '{org_name}'.")
-            return
-
-        print(f"\n=== MEMBERS OF '{org_name}' SORTED BY DEGREE PROGRAM ===\n")
-        
-        # Prepare data for tabulate
-        headers = ["Student Number", "Name", "Degree Program", "Gender"]
-        table_data = [[r['student_number'], r['member_name'], r['degree_program'], r['gender']] for r in results]
-
-        # Print the table
-        print(tabulate(table_data, headers=headers, tablefmt="grid"))
-
-
-
-# =============================================== HELPER FUNCTIONS =============================================== 
-# =============================================== HELPER FUNCTIONS =============================================== 
-# =============================================== HELPER FUNCTIONS =============================================== 
-# =============================================== HELPER FUNCTIONS =============================================== 
-# =============================================== HELPER FUNCTIONS =============================================== 
-# =============================================== HELPER FUNCTIONS =============================================== 
-# =============================================== HELPER FUNCTIONS =============================================== 
+# ======= HELPER FUNCTIONS ======
 
     def register_new_organization(self):
         print("\n=== REGISTER NEW ORGANIZATION ===") 
@@ -954,9 +606,6 @@ class MainApplication:
             int(academic_year[5:]) == int(academic_year[:4]) + 1:
                 break
             print("Error: Academic year must be in the format YYYY-YYYY with consecutive years.") #iiyak n me
-        
-        acad_year_start = int(academic_year[:4])
-        acad_year_end = int(academic_year[5:])
 
 
         while True:
@@ -981,7 +630,7 @@ class MainApplication:
             newMember_studentnumber, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
 
             print(f"\tSuccessfully assigned member to committee '{assigned_committee}' with role '{assigned_role}'!")
-            return acad_year_start
+            return True
         else:
             print("\n\tFailed to assign new student to a committee and role.")
             return False
@@ -1041,6 +690,7 @@ class MainApplication:
                 while True:
                     grad_date_input = input("Graduation date (YYYY-MM-DD): ").strip()
                     try:
+                        from datetime import datetime 
                         datetime.strptime(grad_date_input, "%Y-%m-%d")
                         graduation_date = grad_date_input
                         break
@@ -1076,7 +726,7 @@ class MainApplication:
             return None
 
     def create_newFeeRecord(self, orgID):
-        print("\n=== CREATING NEW STUDENT RECORD ===")
+        print("\n=== CREATING NEW FEE RECORD ===")
 
         try: 
             while True: # First name (required)
@@ -1115,7 +765,7 @@ class MainApplication:
                 else:
                     print("Error: Semester cannot be empty.")
 
-            while True: #TODO: Make Academic Year checking
+            while True: 
                 academic_year = input("Academic Year (YYYY-YYYY): ").strip()
                 if len(academic_year) == 9 and academic_year[4] == '-':
                     prefix = academic_year[:4]
@@ -1160,7 +810,98 @@ class MainApplication:
         except KeyboardInterrupt:
             print("\nRegistration cancelled.")
             return None
+        
+    def pay(self, orgID): #PAY requirement for FEE MANAGEMENT
+        print("\n=========PAYING FEE==========")
+        
+        try:
+            while True: 
+                feeID = input("Enter fee id to be paid: ")
+                fee = self.db_manager.get_fee_by_fee_id(orgID, feeID)
+                if fee:
+                    self.db_manager.pay_fee(orgID, feeID)
+                    print("\t Payment Successful.")
+                    return None
+                print("\tFee not found")
+        except KeyboardInterrupt:
+            print("\nPayment Cancelled")
+            return None
 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+
+    def get_alumni_from_date(self, orgID): #REPORT 7 does not work until membership is implemented
+        try:
+            while True:
+                date_input = input("Enter date (YYYY-MM-DD): ").strip()
+                try:
+                    from datetime import datetime
+                    datetime.strptime(date_input, "%Y-%m-%d")
+                    date = date_input
+                    break
+                except ValueError:
+                    print("Error: Please enter a valid date in YYYY-MM-DD format.")
+            result = self.db_manager.get_alumni_from_date(orgID, date)
+            print(result)
+            return None
+        except KeyboardInterrupt:
+            print("Cancelling Report.")
+            return None
+    def get_amount_fee(self, orgID): #REPORT 9
+        print("\n=======GENERATING REPORT=======")
+
+        try:
+            while True:
+                date_input = input("Enter date (YYYY-MM-DD): ").strip()
+                try:
+                    from datetime import datetime
+                    datetime.strptime(date_input, "%Y-%m-%d")
+                    date = date_input
+                    break
+                except ValueError:
+                    print("Error: Please enter a valid date in YYYY-MM-DD format.")
+            
+            result = self.db_manager.get_amount_fee(orgID, date)
+            print(result)
+            return None
+        except KeyboardInterrupt:
+            print("Cancelling Report.")
+            return None
+    def get_highest_debt(self, orgID): #REPORT 10
+        print("\n=======GENERATING REPORT=======")
+
+        try:
+            while True: 
+                academic_year = input("Academic Year (YYYY-YYYY): ").strip()
+                if len(academic_year) == 9 and academic_year[4] == '-':
+                    prefix = academic_year[:4]
+                    suffix = academic_year[5:]
+                    if prefix.isdigit() and suffix.isdigit():
+                        break
+                print("Error: Academic Year must be in the format XXXX-XXXX (where X is a digit).")
+            
+            while True: 
+                semester = input("Semester (1 or 2): ").strip()
+                if semester and semester.isdigit():
+                    semester = int(semester)
+                    if semester < 0 and semester > 2:
+                        print("Error: Semesters can only be 1 or 2")
+                    else:
+                        break
+                elif semester and not semester.isdigit():
+                    print("Error: Semester must be an digit")
+                else:
+                    print("Error: Semester cannot be empty.")
+
+            highestDebt = self.db_manager.get_highest_debt_member(orgID, semester, academic_year)
+            print(highestDebt)
+            return None
+        except KeyboardInterrupt:
+            print("\n Report Generation Cancelled.")
+            return None
 # =============================================================
 
 
