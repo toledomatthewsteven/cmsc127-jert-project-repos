@@ -18,25 +18,76 @@ class MainApplication:
 
 
     def student_member_view(self):
-        print("\n====================STUDENT VIEW====================")
-        print("[1] Update a student record")
-        print("[2] Delete a student record") #swill delete them from the system entirely... all fees... all memberships... all member_comm... 
-        print("[3] See Unpaid Fees of a Student (in all of their organizations)")
-        print("[0] Back ")
+        try :
+            while True:
+                print("\n====================STUDENT VIEW====================")
+                print("[1] Add a student record")
+                print("[2] Update a student record")
+                print("[3] Delete a student record") #swill delete them from the system entirely... all fees... all memberships... all member_comm... 
+                print("[4] See Unpaid Fees of a Student (in all of their organizations)")
+                print("[0] Back ")
+                
+                choice = input("Enter a choice: ")
+                if choice == '1':
+                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    # self.record_update_student(student_number)
+                    continue
+
+                if choice == '2':
+                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    self.record_update_student(student_number)
+                    continue
+
+                elif choice == '3':
+                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    continue
+
+                elif choice == '4':
+                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    continue
+
+                elif choice != '0':
+                    return
+                
+                else:
+                    print("Invalid choice. Please try again.")
+        except KeyboardInterrupt:
+            print("Student view interface aborted.")
         
-        choice = input("Enter a choice: ")
-        if choice == '1':
-            student_number = input("Enter student number (20XX-XXXXX): ")
-            
+    def print_member_table_entry_contents_helper(self, student_number):
+        #see if entry exists
+        member_table_entry = self.db_manager.get_student_record_by_studentNumber(student_number)
+        if member_table_entry: 
+            member_table_entry['graduation_status'] = "Not Yet Graduated" if member_table_entry['graduation_status'] == 0 else "Graduated" #readability concern 
+            member_table_entry['graduation_date'] = "N/A" if member_table_entry['graduation_date'] is None else member_table_entry['graduation_date']
 
-        elif choice == '2':
-            student_number = input("Enter student number (20XX-XXXXX): ")
+            better_names = { # mapping the keys to more readable headers
+                'first_name': 'First Name',
+                'middle_name': 'Middle Name',
+                'last_name': 'Last Name',
+                'student_number': 'Student Number',
+                'degree_program': 'Degree Program',
+                'gender': 'Gender',
+                'graduation_status': 'Graduation Status',
+                'graduation_date': 'Graduation Date'
+            }
 
+            headers = [better_names.get(key, key) for key in member_table_entry.keys()]
+            values = [member_table_entry[key] for key in member_table_entry.keys()]
 
+            print(tabulate([values], headers=headers, tablefmt="grid"))
+            return member_table_entry
+        else:
+            print(f"No record found for student number {student_number}.")
+            return None
 
-
-        elif choice != '0':
-            print("Invalid choice. Please try again.")
+    def record_update_student(self, student_number):
+        # SEE IF ENTRY EXISTS 
+        entry = self.print_member_table_entry_contents_helper(student_number)
+        if not entry :
+            return
+        else :
+            print("woo")
 
 
 
@@ -48,7 +99,7 @@ class MainApplication:
             print("[1] See all registered organizations")
             print("[2] Register an organization") 
             print("[3] Inspect an organization") 
-            print("[4] Drop/Delete an Organization") 
+            print("[4] Drop/Delete an Organization") #TODO: touchup to delete all necessary components as well
             print("[0] Back ")
             print("")
 
@@ -148,11 +199,11 @@ class MainApplication:
         # we can probably separate these into classes lol #OOP ... this main.py long as fuck right now.. but im lazy asf
         while True:
             print(F"\n====================MEMBER MANAGEMENT: '{org_name}'====================")
-            print("[1] Add a Member")
-            print("[2] Update a Member's Information") # 2 modes ? : update actual member table VS relocate them to a different committee (so bale they have the start date for their 1st committee, for their 2nd, etc)
-            print("[3] Delete a Member's Record") # .. 1 mode. disaffliation? well, yes. but in a sense delete all rows of their student number that is related to the org. as if they were NEVER a member
-            print("[4] Search for a Member")  # 1 combined mode: search first if they are part of the organization , if no. say: this student-number is not a member of ur org. if yes, then extract mem table info.
-            print("[5] Track a Member's Committee/Role/Status History")    
+            print("[1] Add a Member") # DONE
+            print("[2] Update a Member's Information") # DONE
+            print("[3] Delete a Member's Record") #TODO: DELETE
+            print("[4] Search for a Member")  # DONE
+            print("[5] Track a Member's Committee/Role/Status History") # DONE 
             print("[0] Back ")
             print("")
 
