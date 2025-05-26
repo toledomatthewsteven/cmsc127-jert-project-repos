@@ -47,7 +47,7 @@ class MainApplication:
                     continue
 
                 elif choice == '5':
-                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    self.see_unpaid_fees_of_student_in_all_orgs()
                     continue
 
                 elif choice == '0':
@@ -57,6 +57,46 @@ class MainApplication:
                     print("Invalid choice. Please try again.")
         except KeyboardInterrupt:
             print("Student view interface aborted.")
+
+    def see_unpaid_fees_of_student_in_all_orgs(self):
+        try:  
+            student_number = input("Enter student number (20XX-XXXXX): ")
+            entry = self.print_member_table_entry_contents_helper(student_number)
+
+            if not entry :
+                print("\tAborting report.")
+                return
+            else :
+                results = self.db_manager.see_unpaid_fees_of_student_in_all_orgs(student_number)
+                if not results:
+                    print(f"\nNo unpaid fees found for student number '{student_number}'.")
+                    return
+
+                print(f"\n=== UNPAID FEES FOR STUDENT NUMBER '{student_number}'===\n")
+                headers = [
+                    "Org Name",
+                    "Academic Year",
+                    "Semester",
+                    "Fee ID",
+                    "Amount",
+                    "Due Date",
+                    "Late Status"
+                ]
+                table_data = [[
+                    r['org_name'],
+                    r['academic_year'],
+                    r['semester'],
+                    r['fee_id'],
+                    r['amount'],
+                    r['due_date'].strftime("%Y-%m-%d"),  # formatting date into a more readable format
+                    "Late" if r['late_status'] else "Not Late"
+                ] for r in results]
+
+                print(tabulate(table_data, headers=headers, tablefmt="grid")) 
+        
+        except KeyboardInterrupt:
+            print("Aborting report.")
+            return
 
     def record_delete_student_harsh(self):  
         try: 
@@ -1032,6 +1072,11 @@ class MainApplication:
             else:
                 print("Invalid choice. Please try again.")
 
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+
     # (1) View and Sort All Members of the Organization
     def view_and_sort_all_members_menu(self, orgID, org_name):
         while True:
@@ -1074,8 +1119,6 @@ class MainApplication:
                 break
             else:
                 print("Invalid choice. Please try again.")
-
-    
     
     def view_and_sort_ByRole(self, orgID, org_name):
         results = self.db_manager.view_and_sort_ByRole(orgID)  # returns list of dicts
@@ -1210,6 +1253,12 @@ class MainApplication:
 
         # Print the table
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+
 
     def view_highest_unpaid_fees_members(self, orgID):
         sem = input("Enter semester (e.g., 1): ")
