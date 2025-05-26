@@ -340,7 +340,7 @@ class MainApplication:
                 self.db_manager.drop_fees_for_member_from_org(student_number, orgID)
                 self.db_manager.drop_membership_from_org(student_number, orgID)
                 print("Member records deleted successfully.")
-                
+
             else: 
                 print("\tAborting deletion of member record.")
                 return
@@ -1392,7 +1392,7 @@ class MainApplication:
                 'graduation_date': graduation_date
             }
 
-            print("\n\Student data collected successfully!") 
+            print("\n\tStudent data collected successfully!") 
 
             if self.db_manager.register_new_studentRecord(member_data):
                 print(f"\tSuccessfully registered student with student number '{student_number}'!")

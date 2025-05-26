@@ -310,9 +310,7 @@ class JERTDatabaseManager:
             cursor.execute("""
                 SELECT committee_name, committee_role, academic_year, semester, membership_status
                 FROM member_committee
-                WHERE student_number = %s AND committee_name IN (
-                    SELECT committee_name FROM committee WHERE organization_id = %s
-                )
+                WHERE student_number = %s AND organization_id = %s
                 ORDER BY academic_year DESC, semester DESC
             """, (student_number, orgID))
             return cursor.fetchall()
@@ -321,6 +319,7 @@ class JERTDatabaseManager:
             return []
         finally:
             cursor.close()
+
 
     def get_membership_record(self, student_number, orgID):
         cursor = self.connection.cursor(dictionary=True)
@@ -585,9 +584,9 @@ class JERTDatabaseManager:
 
             # Insert into member_committee proper
             cursor.execute("""
-                INSERT INTO member_committee (student_number, committee_name, academic_year, semester, membership_status, committee_role)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (student_number, committeeName, academic_year, semester, membership_status, roleName))
+                INSERT INTO member_committee (student_number, organization_id, committee_name, academic_year, semester, membership_status, committee_role)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (student_number, orgID, committeeName, academic_year, semester, membership_status, roleName))
 
             self.connection.commit()
             return True

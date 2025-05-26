@@ -158,23 +158,34 @@ def create_member_committee_table(connection):
             CREATE TABLE member_committee(
                 student_number char(10),
                 committee_name varchar(30),
+                organization_id int NOT NULL,
                 academic_year varchar(10),
                 semester varchar(20),
                 membership_status varchar(10),
                 committee_role varchar(30),
-                CONSTRAINT mem_comm_pk PRIMARY KEY(student_number, committee_name,academic_year,semester)
+                CONSTRAINT mem_comm_pk PRIMARY KEY(student_number, committee_name, organization_id, academic_year, semester)
             )
         """) 
-        cursor.execute("ALTER TABLE member_committee ADD CONSTRAINT memcomm_student_fk FOREIGN KEY(student_number) REFERENCES member(student_number)")
-        cursor.execute("ALTER TABLE member_committee ADD CONSTRAINT memcomm_comm_fk FOREIGN KEY(committee_name) REFERENCES committee(committee_name)")
-
+        cursor.execute("""
+            ALTER TABLE member_committee 
+            ADD CONSTRAINT memcomm_student_fk 
+            FOREIGN KEY(student_number) REFERENCES member(student_number)
+        """)
+        cursor.execute("""
+            ALTER TABLE member_committee 
+            ADD CONSTRAINT memcomm_comm_fk 
+            FOREIGN KEY(committee_name, organization_id) REFERENCES committee(committee_name, organization_id)
+            ON DELETE CASCADE
+        """)
+        
         connection.commit() 
-        print("\tMember-committee (relationship) table created successfully in new database!")
+        print("\tMember-committee (relationship) table created successfully in new database with organization_id!")
     except Error as e:
         print(f"Error creating member-committee table: {e}")
         raise
     finally:
         cursor.close()
+
 
 #===============================================================
 # dictionary referenced for schema checking existing tables
@@ -230,6 +241,7 @@ REQUIRED_TABLES = {
         'academic_year',
         'semester',
         'membership_status',
-        'committee_role'
+        'committee_role', 
+        'organization_id'
     ]
 }
