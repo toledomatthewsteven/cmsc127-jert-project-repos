@@ -785,6 +785,45 @@ class JERTDatabaseManager:
     # ============================================ UPDATERS ============================================
     # ============================================ UPDATERS ============================================
 
+
+    def update_studentRecord(self, updatedDataDictionary): 
+        cursor = self.connection.cursor()
+        try:
+            sqlStatementString = """
+                UPDATE member
+                SET 
+                    first_name = %s,
+                    middle_name = %s,
+                    last_name = %s,
+                    degree_program = %s,
+                    gender = %s,
+                    graduation_status = %s,
+                    graduation_date = %s
+                WHERE student_number = %s
+            """
+            values = (
+                updatedDataDictionary['first_name'],
+                updatedDataDictionary['middle_name'],
+                updatedDataDictionary['last_name'],
+                updatedDataDictionary['degree_program'],
+                updatedDataDictionary['gender'],
+                updatedDataDictionary['graduation_status'],
+                updatedDataDictionary['graduation_date'],
+                updatedDataDictionary['student_number'], # WHERE condition to identify the student
+            )
+            
+            cursor.execute(sqlStatementString, values)
+            self.connection.commit()
+            cursor.close() 
+            return True
+                
+        except Error as e:
+            print(f"\tUpdate failed: {e}")
+            self.connection.rollback()
+            cursor.close()
+            return False
+
+
     def update_existing_committee_log(self, student_number, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
         cursor = self.connection.cursor()
         try:

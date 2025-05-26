@@ -21,73 +21,124 @@ class MainApplication:
         try :
             while True:
                 print("\n====================STUDENT VIEW====================")
-                print("[1] Add a student record")
-                print("[2] Update a student record")
-                print("[3] Delete a student record") #swill delete them from the system entirely... all fees... all memberships... all member_comm... 
-                print("[4] See Unpaid Fees of a Student (in all of their organizations)")
+                print("[1] Add a student record") # DONE
+                print("[2] Locate a student record") # DONE
+                print("[3] Update a student record") # DONE
+                print("[4] Delete a student record")  #TODO: killself 
+                print("[5] See Unpaid Fees of a Student (in all of their organizations)")
                 print("[0] Back ")
                 
                 choice = input("Enter a choice: ")
                 if choice == '1':
-                    student_number = input("Enter student number (20XX-XXXXX): ")
-                    # self.record_update_student(student_number)
+                    self.create_newStudentRecord();
                     continue
 
                 if choice == '2':
                     student_number = input("Enter student number (20XX-XXXXX): ")
-                    self.record_update_student(student_number)
-                    continue
+                    self.print_member_table_entry_contents_helper(student_number) 
+                    continue 
 
-                elif choice == '3':
+                if choice == '3':
                     student_number = input("Enter student number (20XX-XXXXX): ")
+                    self.record_update_student(student_number)
                     continue
 
                 elif choice == '4':
                     student_number = input("Enter student number (20XX-XXXXX): ")
                     continue
 
-                elif choice != '0':
+                elif choice == '5':
+                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    continue
+
+                elif choice == '0':
                     return
                 
                 else:
                     print("Invalid choice. Please try again.")
         except KeyboardInterrupt:
             print("Student view interface aborted.")
-        
-    def print_member_table_entry_contents_helper(self, student_number):
-        #see if entry exists
-        member_table_entry = self.db_manager.get_student_record_by_studentNumber(student_number)
-        if member_table_entry: 
-            member_table_entry['graduation_status'] = "Not Yet Graduated" if member_table_entry['graduation_status'] == 0 else "Graduated" #readability concern 
-            member_table_entry['graduation_date'] = "N/A" if member_table_entry['graduation_date'] is None else member_table_entry['graduation_date']
-
-            better_names = { # mapping the keys to more readable headers
-                'first_name': 'First Name',
-                'middle_name': 'Middle Name',
-                'last_name': 'Last Name',
-                'student_number': 'Student Number',
-                'degree_program': 'Degree Program',
-                'gender': 'Gender',
-                'graduation_status': 'Graduation Status',
-                'graduation_date': 'Graduation Date'
-            }
-
-            headers = [better_names.get(key, key) for key in member_table_entry.keys()]
-            values = [member_table_entry[key] for key in member_table_entry.keys()]
-
-            print(tabulate([values], headers=headers, tablefmt="grid"))
-            return member_table_entry
-        else:
-            print(f"No record found for student number {student_number}.")
-            return None
 
     def record_update_student(self, student_number):
         # SEE IF ENTRY EXISTS 
+        print("")
         entry = self.print_member_table_entry_contents_helper(student_number)
         if not entry :
             return
         else :
-            print("woo")
+            print("\n=== UPDATING STUDENT RECORD ===")
+            print("Note: Student number is uneditable. Please contact your supervisors if you wish to edit this.")
+
+            try: 
+                while True: # First name (required)
+                    first_name = input("First name: ").strip()
+                    if first_name:
+                        break
+                    print("Error: First name cannot be empty.")
+
+                middle_name = input("Middle name (optional): ").strip() or None # Middle name (optional)
+
+                while True: # Last name (required)
+                    last_name = input("Last name: ").strip()
+                    if last_name:
+                        break
+                    print("Error: Last name cannot be empty.")
+
+                while True: # Degree program (required)
+                    degree_program = input("Degree program (e.g. 'BS Computer Science'): ").strip()
+                    if degree_program:
+                        break
+                    print("Error: Degree program cannot be empty.")
+
+                while True: # Gender (required, 1 character)
+                    gender = input("Gender (M/F): ").strip().upper()
+                    if gender in ['M', 'F']:
+                        break
+                    print("Error: Gender must be 'M' or 'F'. (Sorry, to our SOSC3 profs.)") 
+
+                while True: # Graduation status (optional, default False)
+                    grad_status_input = input("Graduated? (Y/N, default N): ").strip().upper() or 'N'
+                    if grad_status_input in ['Y', 'N']:
+                        graduation_status = True if grad_status_input == 'Y' else False
+                        break
+                    print("Error: Must be 'Y' or 'N'.")
+
+                # Graduation date (only if graduated)
+                graduation_date = None
+                if graduation_status:
+                    while True:
+                        grad_date_input = input("Graduation date (YYYY-MM-DD): ").strip()
+                        try:
+                            datetime.strptime(grad_date_input, "%Y-%m-%d")
+                            graduation_date = grad_date_input
+                            break
+                        except ValueError:
+                            print("Error: Please enter a valid date in YYYY-MM-DD format.")
+
+                # Create a dictionary for the member
+                member_data = {
+                    'first_name': first_name,
+                    'middle_name': middle_name,
+                    'last_name': last_name,
+                    'student_number': student_number,
+                    'degree_program': degree_program,
+                    'gender': gender,
+                    'graduation_status': graduation_status,
+                    'graduation_date': graduation_date
+                }
+
+                print("\n\tUpdated student data collected successfully!") 
+
+                if self.db_manager.update_studentRecord(member_data):
+                    print(f"\tSuccessfully update data of student with student number '{student_number}'!")
+                    return student_number  # return for use
+                else:
+                    print("\tFailed to update the student record.")
+                    return None
+            
+            except KeyboardInterrupt:
+                print("\nRegistration cancelled.")
+                return None
 
 
 
@@ -582,11 +633,6 @@ class MainApplication:
         else:
             print("\n\tFailed to assign member to a committee and role.")
             return False
-        
-
-
-
-
 
 
     def add_member(self, orgID, org_name):
@@ -1149,6 +1195,33 @@ class MainApplication:
 
 #  ================== MINI DIVIDER =========================
 
+    def print_member_table_entry_contents_helper(self, student_number):
+        #see if entry exists
+        member_table_entry = self.db_manager.get_student_record_by_studentNumber(student_number)
+        if member_table_entry: 
+            member_table_entry['graduation_status'] = "Not Yet Graduated" if member_table_entry['graduation_status'] == 0 else "Graduated" #readability concern 
+            member_table_entry['graduation_date'] = "N/A" if member_table_entry['graduation_date'] is None else member_table_entry['graduation_date']
+
+            better_names = { # mapping the keys to more readable headers
+                'first_name': 'First Name',
+                'middle_name': 'Middle Name',
+                'last_name': 'Last Name',
+                'student_number': 'Student Number',
+                'degree_program': 'Degree Program',
+                'gender': 'Gender',
+                'graduation_status': 'Graduation Status',
+                'graduation_date': 'Graduation Date'
+            }
+
+            headers = [better_names.get(key, key) for key in member_table_entry.keys()]
+            values = [member_table_entry[key] for key in member_table_entry.keys()]
+
+            print(tabulate([values], headers=headers, tablefmt="grid"))
+            return member_table_entry
+        else:
+            print(f"No record found for student number {student_number}.")
+            return None
+
     def create_newStudentRecord(self):
         print("\n=== CREATING NEW STUDENT RECORD ===")
 
@@ -1220,7 +1293,7 @@ class MainApplication:
                 'graduation_date': graduation_date
             }
 
-            print("\n\tMember data collected successfully!") 
+            print("\n\Student data collected successfully!") 
 
             if self.db_manager.register_new_studentRecord(member_data):
                 print(f"\tSuccessfully registered student with student number '{student_number}'!")
@@ -1237,10 +1310,10 @@ class MainApplication:
             return None
 
     def create_newFeeRecord(self, orgID):
-        print("\n=== CREATING NEW STUDENT RECORD ===")
+        print("\n=== CREATING NEW FEE RECORD ===")
 
         try: 
-            while True: # First name (required)
+            while True:
                 amount = input("Amount: ").strip()
                 if amount and amount.isdigit():
                     amount = int(amount)
@@ -1263,7 +1336,7 @@ class MainApplication:
                 except ValueError:
                     print("Error: Please enter a valid date in YYYY-MM-DD format.")
             
-            while True: # First name (required)
+            while True: 
                 semester = input("Semester (1 or 2): ").strip()
                 if semester and semester.isdigit():
                     semester = int(semester)
@@ -1286,18 +1359,21 @@ class MainApplication:
                 print("Error: Academic Year must be in the format XXXX-XXXX (where X is a digit).")
 
 
-            while True:  # Student number (XXXX-XXXXX)
+            while True:
                 student_number = input("Student number (XXXX-XXXXX): ").strip()
-                if len(student_number) == 10 and student_number[4] == '-':
-                    prefix = student_number[:4]
-                    suffix = student_number[5:]
-                    if prefix.isdigit() and suffix.isdigit():
-                        if self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, "asd"):
-                            print("ERROR: Student not Found")
-                        else:
-                            break
-                        
-                print("Error: Student number must be in the format XXXX-XXXXX (where X is a digit).")
+                
+                # Basic format check
+                if len(student_number) == 10 and student_number[4] == '-' and \
+                student_number[:4].isdigit() and student_number[5:].isdigit():
+                    
+                    if self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, "asd"):
+                        break  # Valid and found student number, exit loop
+                    else:
+                        print("ERROR: Student not found.")
+                
+                else:
+                    print("Error: Student number must be in the format XXXX-XXXXX (where X is a digit).")
+
 
             # Create a dictionary for the member
             fee_data = {
@@ -1309,7 +1385,7 @@ class MainApplication:
                 'organization_id': orgID
             }
 
-            print("\n\tMember data collected successfully!") 
+            print("\nData collected successfully!") 
 
             if self.db_manager.register_new_feeRecord(fee_data):
                 print(f"\tSuccessfully registered fee")
