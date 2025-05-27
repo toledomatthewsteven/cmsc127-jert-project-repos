@@ -567,6 +567,15 @@ class MainApplication:
 
             if not history:
                 print(f"\tNo committee records found for student number '{student_number}' in '{org_name}'.")
+
+                membercheck = self.db_manager.get_membership_record(student_number, orgID)
+                if membercheck:
+                    print("Proceeding to create new committee/role/status log for this member...")
+                    join_date_obj = membercheck['join_date']
+                    self.committee_and_role_assignment(orgID, org_name, student_number, join_date_obj)
+
+
+
                 return
             
             table_data = [[
