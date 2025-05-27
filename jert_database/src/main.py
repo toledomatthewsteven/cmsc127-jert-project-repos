@@ -1240,8 +1240,7 @@ class MainApplication:
                 continue 
 
             if choice == '6':
-                self.view_percentage_active_inactive_members(orgID, org_name)
-                print("6")
+                self.view_percentage_active_inactive_members(orgID, org_name) 
                 continue 
 
             if choice == '7':
@@ -1820,7 +1819,7 @@ class MainApplication:
     def get_unpaid_mem(self, orgID):
         try:
             while True:
-                academic_year = input("Enter academic year of the executives to find (format YYYY-YYYY, e.g. 2024-2025): ").strip()
+                academic_year = input("Enter academic year to find (format YYYY-YYYY, e.g. 2024-2025): ").strip()
                 if len(academic_year) == 9 and academic_year[4] == '-' and \
                 academic_year[:4].isdigit() and academic_year[5:].isdigit() and \
                 int(academic_year[5:]) == int(academic_year[:4]) + 1:
