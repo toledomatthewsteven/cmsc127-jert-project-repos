@@ -1064,7 +1064,7 @@ class MainApplication:
 
             if choice == '9':
                 print("9")
-                self.view_highest_unpaid_fees_members(orgID)
+                self.view_highest_unpaid_fees_members(orgID, org_name)
                 continue 
 
             elif choice == '0':
@@ -1254,64 +1254,42 @@ class MainApplication:
         # Print the table
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
-    # ================== view_and_sort_all_members_menu ==================
-    # ================== view_and_sort_all_members_menu ==================
-    # ================== view_and_sort_all_members_menu ==================
-    # ================== view_and_sort_all_members_menu ==================
-
-
-    def view_highest_unpaid_fees_members(self, orgID):
+    # REPORT 9: View the member(s) of an organization with the highest debt for a given sem/AY
+    def view_highest_unpaid_fees_members(self, orgID, org_name):
         sem = input("Enter semester (e.g., 1): ")
         acad_year = input("Enter academic year (e.g., 20XX-20YY): ")
 
-        try: 
-            # QUery taken from JERT_dml_reports (lines 345-371)
-            query = """
-                SELECT 
-                    m.student_number,
-                    CASE 
-                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
-                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
-                    END AS member_name,
-                    m.degree_program, 
-                    m.gender,
-                    f.academic_year,
-                    f.semester,
-                    SUM(CASE WHEN (f.payment_status = false AND f.late_status = true) THEN f.amount ELSE 0 END) as `Debt this Semester`
-                FROM 
-                    member m 
-                JOIN 
-                    fee f ON m.student_number = f.student_number
-                WHERE
-                    f.payment_status = false AND
-                    f.academic_year = '2024-2025' AND
-                    f.semester = 1 AND 
-                    f.organization_id = referenced_organization_id AND
-                GROUP BY: 
-                    m.student_number
-                    f.academic_year,
-                    f.semester
-                ORDER BY
-                    `Debt this Semester` DESC
-                LIMIT 10;
-            """
-            # Query above can be imported from JERT_dml_reports para di umuulit
-            
-            cursor = self.connection.cursor()
-            cursor.execute(query, (acad_year, sem, orgID))
-            results = cursor.fetchall()
+        results = self.db_manager.view_highest_unpaid_fees_members(orgID, sem, acad_year)
 
-            if not results:
-                print("\nNo unpaid debts found for given sem/AY.")
-            else:
-                print("\n===== MEMBER(S) WITH HIGHEST UNPAID FEES =====")
-                for row in results:
-                    student_number, name, degree, gender, ay, sem, total_debt = row
-                    print(f"{student_number} | {name} | {degree} | {gender} | PHP {total_debt}")
-        except Error as e:
-            print(f"Error fetching highest debt member(s): {e}")
-        finally:
-            cursor.close()
+        if not results:
+            print(f"\nNo unpaid fees found for '{org_name}' in Semester {sem} and AY {acad_year}.")
+            return
+
+        print(f"\n=== TOP 10 MEMBERS WITH HIGHEST UNPAID FEES IN '{org_name}' (Sem {sem}, AY {acad_year}) ===\n")
+        headers = [
+            "Student Number",
+            "Name",
+            "Degree Program",
+            "Gender",
+            "Total Debt"
+        ]
+
+        from tabulate import tabulate
+        table_data = [[
+            r['student_number'],
+            r['member_name'],
+            r['degree_program'],
+            r['gender'],
+            f"PHP {r['total_unpaid']:.2f}"
+        ] for r in results]
+
+        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
+    # ================== view_and_sort_all_members_menu ==================
 
 
 

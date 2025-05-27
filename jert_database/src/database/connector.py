@@ -1011,6 +1011,7 @@ class JERTDatabaseManager:
     # ============================================ REPORT GENERATORS ============================================
     # ============================================ REPORT GENERATORS ============================================
 
+    # VIEW ALL MEMBERS OF AN ORG BY ID
     def view_and_sort_ByRole(self, orgID): 
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1065,6 +1066,7 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
     
+    # VIEW ALL MEMBERS OF AN ORG BY STATUS
     def view_and_sort_ByStatus(self, orgID):
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1114,6 +1116,7 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
+    # VIEW ALL MEMBERS OF AN ORG BY GENDER
     def view_and_sort_ByGender(self, orgID): 
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1148,6 +1151,7 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
+    # VIEW ALL MEMBERS OF AN ORG BY DEGREE PROGRAM
     def view_and_sort_ByDegreeProgram(self, orgID): 
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1182,6 +1186,7 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
+    # # VIEW ALL MEMBERS OF AN ORG BY BATCH (YEAR OF MEMBERSHIP) 
     def view_and_sort_ByBatchJoinYear(self, orgID): 
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1215,6 +1220,7 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
     
+    # VIEW ALL MEMBERS OF AN ORG BY COMMITTEE
     def view_and_sort_ByCommittee(self, orgID): 
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1265,7 +1271,8 @@ class JERTDatabaseManager:
 
         finally:
             cursor.close()
-
+    
+    # View members of an organization with unpaid membership fees for a given sem/AY
     def see_unpaid_fees_of_student_in_all_orgs(self, student_number):
         cursor = self.connection.cursor(dictionary=True)
         try:
@@ -1307,5 +1314,49 @@ class JERTDatabaseManager:
             print(f"Database error when viewing unpaid fees: {e}") 
             return None
 
+        finally:
+            cursor.close()
+
+    # REPORT 9: View the member(s) of an organization with the highest debt for a given sem/AY
+    def view_highest_unpaid_fees_members(self, orgID, sem, acad_year):
+        cursor = self.connection.cursor(dictionary=True)
+
+        try: 
+            cursor = self.connection.cursor(dictionary=True)
+            query = """
+                SELECT 
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    m.degree_program, 
+                    m.gender,
+                    f.academic_year,
+                    f.semester,
+                    SUM(CASE WHEN (f.payment_status = false AND f.late_status = true) THEN f.amount ELSE 0 END) as `Debt this Semester`
+                FROM 
+                    member m 
+                JOIN 
+                    fee f ON m.student_number = f.student_number
+                WHERE
+                    f.payment_status = false AND
+                    f.academic_year = '2024-2025' AND
+                    f.semester = 1 AND 
+                    f.organization_id = referenced_organization_id AND
+                GROUP BY: 
+                    m.student_number
+                    f.academic_year,
+                    f.semester
+                ORDER BY
+                    `Debt this Semester` DESC
+                LIMIT 10;
+            """
+            cursor.execute(query, (acad_year, sem, orgID))
+            results = cursor.fetchall()
+            return results
+
+        except Error as e:
+            print(f"Error fetching highest debt member(s): {e}")
         finally:
             cursor.close()
