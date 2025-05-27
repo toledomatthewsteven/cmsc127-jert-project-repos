@@ -604,31 +604,36 @@ class JERTDatabaseManager:
     def register_member_under_committee_with_role(self, student_number, orgID, committeeName, roleName, academic_year, semester, membership_status):
         cursor = self.connection.cursor()
         try:
-            # Double check committee existence for orgID
-            cursor.execute("""
-                SELECT * FROM committee
-                WHERE committee_name = %s AND organization_id = %s
-            """, (committeeName, orgID))
-            committee = cursor.fetchone()
-            if not committee:
-                cursor.fetchall()  # Clear any remaining result rows
-                print(f"Error: Committee '{committeeName}' does not exist under organization ID {orgID}.")
+            if committeeName is not None:
+                cursor.execute("""
+                    SELECT * FROM committee
+                    WHERE committee_name = %s AND organization_id = %s
+                """, (committeeName, orgID))
+                committee = cursor.fetchone()
+                if not committee:
+                    cursor.fetchall()  # clear
+                    print(f"Error: Committee '{committeeName}' does not exist under organization ID {orgID}.")
+                    return False
+                else:
+                    cursor.fetchall()  # clear
+
+                if roleName is not None:
+                    cursor.execute("""
+                        SELECT * FROM committee_roles
+                        WHERE committee_name = %s AND organization_id = %s AND committee_role = %s
+                    """, (committeeName, orgID, roleName))
+                    role = cursor.fetchone()
+                    if not role:
+                        cursor.fetchall()  # clear
+                        print(f"Error: Role '{roleName}' does not exist under committee '{committeeName}'.")
+                        return False
+                    else:
+                        cursor.fetchall()  # clear
+
+            # if committeeName is None but roleName is provided, it’s an error since role depends on committee
+            elif roleName is not None:
+                print("Error: Cannot check role without specifying committee.")
                 return False
-            else:
-                cursor.fetchall()  # Clear any remaining result rows (if any)
-            
-            # Double check role existence in committee (with orgID too)
-            cursor.execute("""
-                SELECT * FROM committee_roles
-                WHERE committee_name = %s AND organization_id = %s AND committee_role = %s
-            """, (committeeName, orgID, roleName))
-            role = cursor.fetchone()
-            if not role:
-                cursor.fetchall()  # Clear any remaining result rows
-                print(f"Error: Role '{roleName}' does not exist under committee '{committeeName}'.")
-                return False
-            else:
-                cursor.fetchall()  # Clear any remaining result rows (if any)
 
             # Insert into member_committee proper
             cursor.execute("""
