@@ -512,22 +512,24 @@ class JERTDatabaseManager:
         finally:  
             cursor.close()
 
-    def pay_fee(self, orgID, fee_id):
+    def pay_fee(self, orgID, fee_id, payment_date):
         cursor = self.connection.cursor(dictionary=True)
-        try: 
+        try:
             cursor.execute("""
                 UPDATE fee
-                SET payment_status = 1
+                SET payment_status = 1,
+                    payment_date = %s
                 WHERE organization_id = %s AND fee_id = %s  
-                           
-                           
-            """, (orgID, fee_id))
+            """, (payment_date, orgID, fee_id))
+
+            self.connection.commit()
 
         except Error as e:
-            print(f"Databse error when paying: {e}")
+            print(f"Database error when paying: {e}")
             return None
         finally:
             cursor.close()
+
 
     def get_fee_by_fee_id(self, orgID, fee_id):
         cursor = self.connection.cursor(dictionary=True)
@@ -1385,32 +1387,39 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
-    def get_amount_fee(self, orgID, date): #REPORT 9 GET ALL PAID/UNPAID FEES AS OF GIVEN DATE
+    def get_amount_fee(self, orgID, date): # REPORT 9 GET TOTAL PAID/UNPAID FEES AS OF GIVEN DATE
         cursor = self.connection.cursor(dictionary=True)
         try:
             cursor.execute("""
-            SELECT 
-            so.org_name,
-            SUM(CASE WHEN f.payment_status = TRUE THEN f.amount ELSE 0 END) AS paid,
-            SUM(CASE WHEN f.payment_status = FALSE THEN f.amount ELSE 0 END) AS unpaid
-            FROM 
-                fee f
-            JOIN 
-                student_organization so ON f.organization_id = so.organization_id
-            WHERE 
-                f.organization_id = %s AND 
-                f.due_date <= %s
-            GROUP BY 
-                so.org_name;                 
+                SELECT 
+                    so.org_name,
+                    SUM(CASE 
+                            WHEN f.payment_status = TRUE AND f.payment_date <= %s THEN f.amount 
+                            ELSE 0 
+                        END) AS paid,
+                    SUM(CASE 
+                            WHEN f.payment_status = FALSE OR (f.payment_status = TRUE AND f.payment_date > %s) THEN f.amount 
+                            ELSE 0 
+                        END) AS unpaid
+                FROM 
+                    fee f
+                JOIN 
+                    student_organization so ON f.organization_id = so.organization_id
+                WHERE 
+                    f.organization_id = %s
+                GROUP BY 
+                    so.org_name;                 
+            """, (date, date, orgID))
             
-            """, (orgID, date))
             results = cursor.fetchall()
             return results
+            
         except Error as e:
-            print(f"Database error trying to fetch student.")
+            print(f"Database error trying to fetch fee amounts: {e}")
             return None
         finally:
             cursor.close()
+
 
     # REPORT 9: View the member(s) of an organization with the highest debt for a given sem/AY
     def view_highest_unpaid_fees_members(self, orgID, sem, acad_year):
