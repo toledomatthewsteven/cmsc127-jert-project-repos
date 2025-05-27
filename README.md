@@ -11,13 +11,14 @@
 
 ---
 
-## 📚 Table of Contents
-
-- [About](#-about)  
-- [Features](#-features)  
-- [Technology Stack](#-stack)
-- [Usage](#-usage)  
-
+## 🤖 Usage
+1. Install dependencies:
+    > python -m pip install mysql-connector-python tabulate
+2. Configure MySQL:
+    - Ensure MariaDB is installed in your computer.
+3. Run the main python file located in jert_database > src > main.py 
+    - python main.py 
+    - Follow on-screen instructions to log in as root, create/log into JERT user, and navigate options.
 ---
 
 ## 📖 About
@@ -75,11 +76,6 @@ This management system is built for student organization environment. It provide
     - tabulate for formatted tables  
 - Standard library modules: getpass, datetime, argparse  
 
-## 🤖 Usage
-1. Install dependencies:
-    > python -m pip install mysql-connector-python tabulate
-2. Configure MySQL:
-    - Ensure MariaDB is installed in your computer.
-3. Run the main python file located in jert_database > src > main.py 
-    - python main.py 
-    - Follow on-screen instructions to log in as root, create/log into JERT user, and navigate options.
+--
+
+Github Link (for future reference): https://github.com/toledomatthewsteven/cmsc127-jert-project-repos 
