@@ -1537,8 +1537,59 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
+    # REPORT 6: View percentage of active and inactive members of an organization for the last n sems
+    def view_percentage_active_inactive_members(self, orgID):
+        while True:
+            user_input = input("Enter how many recent semesters to include: ").strip()
+            if user_input.isdigit() and int(user_input) > 0:
+                n = int(user_input)
+                break
+            else:
+                print("Invalid! Please enter a positive integer.")
 
-    # REPORT 9: View the member(s) of an organization with the highest debt for a given sem/AY
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            query = """
+            SELECT
+                sl.academic_year,
+                sl.semester,
+                SUM(mc.membership_status = 'Active') AS active_members,
+                SUM(mc.membership_status != 'Active') AS inactive_members,
+                COUNT(*) AS total_members,
+                ROUND(SUM(mc.membership_status = 'Active') / COUNT(*) * 100, 2) AS active_percentage,
+                ROUND(SUM(mc.membership_status != 'Active') / COUNT(*) * 100, 2) AS inactive_percentage
+            FROM (
+                SELECT DISTINCT academic_year, semester
+                FROM member_committee
+                WHERE organization_id = %s
+                ORDER BY 
+                    academic_year DESC,
+                    CASE semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
+                LIMIT %s
+            ) AS sl
+            JOIN member_committee mc
+            ON mc.organization_id = %s
+            AND mc.academic_year = sl.academic_year
+            AND mc.semester = sl.semester
+            GROUP BY
+                sl.academic_year,
+                sl.semester
+            ORDER BY
+                sl.academic_year DESC,
+                CASE sl.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
+        """
+            cursor.execute(query, (orgID, n, orgID))
+            results = cursor.fetchall()
+            return results
+        
+        except Error as e:
+            print(f"Error in fetching active/inactive members percentage report: {e}")
+            return None
+        finally:
+            cursor.close()
+
+
+    # REPORT 10: View the member(s) of an organization with the highest debt for a given sem/AY
     def view_highest_unpaid_fees_members(self, orgID, sem, acad_year):
         cursor = self.connection.cursor(dictionary=True)
 
