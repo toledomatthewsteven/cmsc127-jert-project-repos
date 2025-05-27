@@ -525,6 +525,23 @@ class JERTDatabaseManager:
             return []
         finally:  
             cursor.close()
+    
+    def delete_fee(self, orgID, fee_id):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                DELETE FROM fee 
+                WHERE organization_id = %s AND fee_id = %s  
+            """, (orgID, fee_id))
+
+            self.connection.commit()
+
+        except Error as e:
+            print(f"Database error when deleting a fee: {e}")
+            return None
+        finally:
+            cursor.close()
+
 
     def pay_fee(self, orgID, fee_id, payment_date):
         cursor = self.connection.cursor(dictionary=True)
