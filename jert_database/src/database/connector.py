@@ -1601,7 +1601,16 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
-    # REPORT 6: View percentage of active and inactive members of an organization for the last n sems
+    # REPORT 6: View percentage of active and inactive members of an organization for the last n sems 
+    # asks the user for the number of recent semesters to include in the report
+    # then find the latest recorded semester for the given organization to determine where to start counting backwards
+    # it generates a list of the most recent n semesters by decrementing through the standard academic calendar
+    # for each semester in this list, it checks the membership status of each student up to that semester
+    # it also makes sure to only include a student's membership data if the semester is equal to or later than their earliest recorded participation
+    # a common table expression (cte) 'latest_status' is used to determine the latest known status for each student per semester
+    # the query aggregates the data to count total members, active members, and inactive members for each semester
+    # then it calculates the active and inactive percentages
+    
     def view_percentage_active_inactive_members(self, orgID):
         print("This will only include semesters tracked in this database as a reference of what semester to count backwards from.")
 
@@ -1615,7 +1624,7 @@ class JERTDatabaseManager:
 
         cursor = self.connection.cursor(dictionary=True)
         try:
-            # Latest semester recorded for this organization
+            # get latest semester recorded for this organization
             cursor.execute("""
                 SELECT academic_year, semester
                 FROM member_committee
@@ -1631,21 +1640,19 @@ class JERTDatabaseManager:
 
             latest_ay = latest_record['academic_year']
             latest_sem = latest_record['semester']
-            print(f"Latest recorded semester: {latest_ay} {latest_sem}")
 
-            # generate the last n semesters
+            # generate last n semesters (including latest) going backwards
             selected_semesters = []
             year, sem = latest_ay, latest_sem
             for _ in range(n):
                 selected_semesters.append((year, sem))
-                if sem == 'First':
-                    sem = 'Second'
-                    year = str(int(year.split('-')[0]) - 1) + '-' + str(int(year.split('-')[0]))
-                else:
+                if sem == 'Second':
                     sem = 'First'
-            # print(f"Selected semesters for tracking (most recent {n}):")
-            for ay, sem in selected_semesters:
-                print(f"  {ay} {sem}")
+                else:
+                    # sem was 'First', go back one academic year and set sem='Second'
+                    start_year = int(year.split('-')[0])
+                    sem = 'Second'
+                    year = f"{start_year - 1}-{start_year}"
 
             placeholders = ','.join(['(%s,%s)'] * len(selected_semesters))
             semester_params = []
@@ -1662,56 +1669,49 @@ class JERTDatabaseManager:
                 FROM member_committee
                 GROUP BY student_number, organization_id
             ),
+            all_students AS (
+                SELECT DISTINCT student_number, organization_id
+                FROM member_committee
+                WHERE organization_id = %s
+            ),
             latest_status AS (
                 SELECT
-                    s.academic_year, s.semester, m.student_number, m.organization_id,
+                    ss.academic_year, ss.semester, s.student_number, s.organization_id,
                     (
                         SELECT mc2.membership_status
                         FROM member_committee mc2
-                        WHERE mc2.student_number = m.student_number
-                        AND mc2.organization_id = m.organization_id
+                        WHERE mc2.student_number = s.student_number
+                        AND mc2.organization_id = s.organization_id
                         AND (
-                            mc2.academic_year < s.academic_year OR
-                            (mc2.academic_year = s.academic_year AND mc2.semester <= s.semester)
+                            mc2.academic_year < ss.academic_year OR
+                            (mc2.academic_year = ss.academic_year AND mc2.semester <= ss.semester)
                         )
                         ORDER BY mc2.academic_year DESC,
                                 CASE mc2.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
                         LIMIT 1
                     ) AS latest_status
-                FROM selected_semesters s
-                CROSS JOIN (
-                    SELECT DISTINCT student_number, organization_id
-                    FROM member_committee
-                    WHERE organization_id = %s
-                ) m
-                JOIN earliest_member_semesters e
-                ON m.student_number = e.student_number AND m.organization_id = e.organization_id
-                WHERE CONCAT(s.academic_year, '-', CASE s.semester WHEN 'First' THEN '1' ELSE '2' END) >= e.first_sem
+                FROM selected_semesters ss
+                CROSS JOIN all_students s
+                JOIN earliest_member_semesters e ON s.student_number = e.student_number AND s.organization_id = e.organization_id
+                WHERE CONCAT(ss.academic_year, '-', CASE ss.semester WHEN 'First' THEN '1' ELSE '2' END) >= e.first_sem
             )
             SELECT
-                s.academic_year, s.semester,
-                COUNT(*) AS total_members,
-                SUM(CASE WHEN latest_status = 'Active' THEN 1 ELSE 0 END) AS active_members,
-                SUM(CASE WHEN latest_status != 'Active' THEN 1 ELSE 0 END) AS inactive_members,
-                ROUND(SUM(CASE WHEN latest_status = 'Active' THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS active_percentage,
-                ROUND(SUM(CASE WHEN latest_status != 'Active' THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS inactive_percentage
-            FROM latest_status s
-            GROUP BY s.academic_year, s.semester
-            ORDER BY s.academic_year DESC,
-                    CASE s.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
+                ss.academic_year,
+                ss.semester,
+                COUNT(ls.student_number) AS total_members,
+                SUM(CASE WHEN ls.latest_status = 'Active' THEN 1 ELSE 0 END) AS active_members,
+                SUM(CASE WHEN ls.latest_status != 'Active' THEN 1 ELSE 0 END) AS inactive_members,
+                CASE WHEN COUNT(ls.student_number) > 0 THEN ROUND(SUM(CASE WHEN ls.latest_status = 'Active' THEN 1 ELSE 0 END) / COUNT(ls.student_number) * 100, 2) ELSE 0 END AS active_percentage,
+                CASE WHEN COUNT(ls.student_number) > 0 THEN ROUND(SUM(CASE WHEN ls.latest_status != 'Active' THEN 1 ELSE 0 END) / COUNT(ls.student_number) * 100, 2) ELSE 0 END AS inactive_percentage
+            FROM selected_semesters ss
+            LEFT JOIN latest_status ls ON ss.academic_year = ls.academic_year AND ss.semester = ls.semester
+            GROUP BY ss.academic_year, ss.semester
+            ORDER BY ss.academic_year DESC,
+                    CASE ss.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
             """
 
             cursor.execute(query, semester_params + [orgID])
             results = cursor.fetchall()
-
-            # asks the user for the number of recent semesters to include in the report
-            # then find the latest recorded semester for the given organization to determine where to start counting backwards
-            # it generates a list of the most recent n semesters by decrementing through the standard academic calendar
-            # for each semester in this list, it checks the membership status of each student up to that semester
-            # it also makes sure to only include a student's membership data if the semester is equal to or later than their earliest recorded participation
-            # a common table expression (cte) 'latest_status' is used to determine the latest known status for each student per semester
-            # the query aggregates the data to count total members, active members, and inactive members for each semester
-            # then it calculates the active and inactive percentages
 
             return results
 
@@ -1720,6 +1720,7 @@ class JERTDatabaseManager:
             return None
         finally:
             cursor.close()
+
 
 
     # REPORT 10: View the member(s) of an organization with the highest debt for a given sem/AY
