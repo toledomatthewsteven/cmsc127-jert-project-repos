@@ -1404,40 +1404,58 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
-    def get_exec_by_acad_year(self, orgID, acad_year, semester):
+    def get_exec_by_acad_year(self, orgID, acad_year):
         cursor = self.connection.cursor(dictionary=True)
         try:
             cursor.execute("""
+                WITH latest_entry AS (
+                    SELECT 
+                        mc.student_number,
+                        MAX(CONCAT(mc.academic_year, 
+                            CASE mc.semester WHEN 'First' THEN '1' WHEN 'Second' THEN '2' ELSE '0' END)
+                        ) AS max_period
+                    FROM member_committee mc
+                    WHERE mc.organization_id = %s AND mc.academic_year <= %s
+                    GROUP BY mc.student_number
+                ),
+                latest_exec AS (
+                    SELECT 
+                        mc.student_number
+                    FROM member_committee mc
+                    JOIN committee c ON mc.committee_name = c.committee_name AND mc.organization_id = c.organization_id
+                    JOIN latest_entry le ON mc.student_number = le.student_number
+                    WHERE c.committee_name = 'Executive'
+                    AND mc.organization_id = %s
+                    AND mc.academic_year <= %s
+                    AND CONCAT(mc.academic_year, 
+                        CASE mc.semester WHEN 'First' THEN '1' WHEN 'Second' THEN '2' ELSE '0' END) = le.max_period
+                )
                 SELECT 
-                    m.student_number, 
+                    m.student_number,
                     CASE 
                         WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
                         ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
                     END AS member_name,
-                    m.degree_program, 
+                    m.degree_program,
                     m.gender
-                FROM
-                    member m 
-                JOIN
-                    member_committee memcom ON m.student_number = memcom.student_number
-                JOIN
-                    committee comm ON memcom.committee_name = comm.committee_name
-                WHERE 
-                    comm.organization_id = %s AND
-                    memcom.academic_year = %s AND
-                    memcom.semester = %s AND  
-                    comm.committee_name = "Executive"           
-            
-            """, (orgID, acad_year, semester))
+                FROM member m
+                JOIN latest_exec le ON m.student_number = le.student_number
+            """, (orgID, acad_year, orgID, acad_year))
             results = cursor.fetchall()
             return results
-        
+            
         except Error as e:
-            print(f"Database error trying to fetch students.")
+            print(f"Database error trying to fetch students: {e}")
             return None
-        
+            
         finally:
             cursor.close()
+
+        #  latest_entry finds each student’s most recent member_committee period (acad_year + semester) up to acad_year
+        #  latest_exec checks if that latest period was in the Executive committee
+        #  if so, the student is counted as an exec in acad_year
+        #  it really is the org's due diligence to unset them execs every year :crying_laughing:
+
 
     def get_members_by_role_date(self, orgID, role): #REPORT 5 GET ALL MEMBERS WHO BECAME A SPECIFIC ROLE IN DESCENDING ACAD YEAR
         cursor = self.connection.cursor(dictionary=True)
@@ -1594,43 +1612,65 @@ class JERTDatabaseManager:
         cursor = self.connection.cursor(dictionary=True)
         try:
             query = """
+            WITH latest_status AS (
+                SELECT
+                    mc.student_number,
+                    mc.organization_id,
+                    sl.academic_year,
+                    sl.semester,
+                    (
+                        SELECT mc2.membership_status
+                        FROM member_committee mc2
+                        WHERE mc2.student_number = mc.student_number
+                        AND mc2.organization_id = mc.organization_id
+                        AND (
+                            mc2.academic_year < sl.academic_year OR
+                            (mc2.academic_year = sl.academic_year AND mc2.semester <= sl.semester)
+                        )
+                        ORDER BY mc2.academic_year DESC,
+                                CASE mc2.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
+                        LIMIT 1
+                    ) AS latest_status
+                FROM (
+                    SELECT DISTINCT student_number, organization_id FROM member_committee
+                ) mc
+                CROSS JOIN (
+                    SELECT DISTINCT academic_year, semester
+                    FROM member_committee
+                    WHERE organization_id = %s
+                    ORDER BY academic_year DESC,
+                            CASE semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
+                    LIMIT %s
+                ) sl
+                WHERE mc.organization_id = %s
+            )
             SELECT
                 sl.academic_year,
                 sl.semester,
-                SUM(mc.membership_status = 'Active') AS active_members,
-                SUM(mc.membership_status != 'Active') AS inactive_members,
+                SUM(latest_status = 'Active') AS active_members,
+                SUM(latest_status != 'Active') AS inactive_members,
                 COUNT(*) AS total_members,
-                ROUND(SUM(mc.membership_status = 'Active') / COUNT(*) * 100, 2) AS active_percentage,
-                ROUND(SUM(mc.membership_status != 'Active') / COUNT(*) * 100, 2) AS inactive_percentage
-            FROM (
-                SELECT DISTINCT academic_year, semester
-                FROM member_committee
-                WHERE organization_id = %s
-                ORDER BY 
-                    academic_year DESC,
-                    CASE semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
-                LIMIT %s
-            ) AS sl
-            JOIN member_committee mc
-            ON mc.organization_id = %s
-            AND mc.academic_year = sl.academic_year
-            AND mc.semester = sl.semester
-            GROUP BY
-                sl.academic_year,
-                sl.semester
-            ORDER BY
-                sl.academic_year DESC,
-                CASE sl.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
-        """
+                ROUND(SUM(latest_status = 'Active') / COUNT(*) * 100, 2) AS active_percentage,
+                ROUND(SUM(latest_status != 'Active') / COUNT(*) * 100, 2) AS inactive_percentage
+            FROM latest_status sl
+            GROUP BY sl.academic_year, sl.semester
+            ORDER BY sl.academic_year DESC,
+                    CASE sl.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
+            """
             cursor.execute(query, (orgID, n, orgID))
+            # compute the active and inactive member counts per semester by carrying forward the latest known membership status of each student.....
+            # use a cte (latest_status) to pair each student with each semester, and for each pair, it finds the most recent entry in member_committee
+            # up to and including that semester. the aggregation then counts how many are active and inactive, even if no new entry was logged for the semester.
+
             results = cursor.fetchall()
             return results
-        
+
         except Error as e:
             print(f"Error in fetching active/inactive members percentage report: {e}")
             return None
         finally:
             cursor.close()
+
 
 
     # REPORT 10: View the member(s) of an organization with the highest debt for a given sem/AY
