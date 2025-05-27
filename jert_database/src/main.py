@@ -34,12 +34,13 @@ class MainApplication:
                     continue
 
                 if choice == '2':
-                    student_number = input("Enter student number (20XX-XXXXX): ")
+                    student_number = input("\nEnter student number (20XX-XXXXX): ")
                     self.print_member_table_entry_contents_helper(student_number) 
                     continue 
 
                 if choice == '3':
-                    self.record_update_student()
+                    student_number = input("\nEnter student number to update (20XX-XXXX): ").strip()
+                    self.record_update_student(student_number)
                     continue
 
                 elif choice == '4':
