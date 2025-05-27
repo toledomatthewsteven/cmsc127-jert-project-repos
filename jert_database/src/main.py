@@ -1863,6 +1863,7 @@ class MainApplication:
             return
         else:
             print("Successfully connected to the database!")
+            print("Note: When in doubt/want to cancel an operation: hit CTRL + C.")
             # print(self) #why are we print(self) ing :crying_laughing:
         try:
             
