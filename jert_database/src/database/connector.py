@@ -285,6 +285,19 @@ class JERTDatabaseManager:
     # ============================================ GETTERS =========================
     # ============================================ GETTERS =========================
 
+    def get_all_student_records(self):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT * FROM member")
+            results = cursor.fetchall()  # Return a list of dictionaries
+            return results
+        except Error as e:
+            print(f"Database error when fetching all student records: {e}")
+            return []
+        finally:
+            cursor.close()
+
+
     def get_all_organizations(self):  #damn how'd this get lost in the commits
         cursor = self.connection.cursor(dictionary=True)
         try: 
@@ -493,14 +506,15 @@ class JERTDatabaseManager:
             cursor.close()
 
     
-    def get_fees(self, orgID):
+    def get_fees_of_orgID(self, orgID):
         cursor = self.connection.cursor(dictionary=True)
         try:
             cursor.execute("""
                 SELECT *
                 FROM fee
+                WHERE organization_id = %s
                 ORDER BY payment_date
-            """)
+            """, (orgID,))
 
             feelist = cursor.fetchall()
             cursor.close()
