@@ -9,7 +9,7 @@ class MainApplication:
 
     def main_menu(self):
         print("\n====================MAIN MENU====================")
-        print("[1] Student/Member View")
+        print("[1] Student Record View")
         print("[2] Organization View")
         print("[0] Exit")
 
@@ -20,44 +20,87 @@ class MainApplication:
     def student_member_view(self):
         try :
             while True:
-                print("\n====================STUDENT VIEW====================")
-                print("[1] Add a student record") # DONE
-                print("[2] Locate a student record") # DONE
-                print("[3] Update a student record") # DONE
-                print("[4] Delete a student record")  #DONE
-                print("[5] See Unpaid Fees of a Student (in all of their organizations)")
-                print("[0] Back ")
-                
+                print("\n====================STUDENT RECORD VIEW====================")
+                print("[1] Add a student record")  # DONE
+                print("[2] View all student records") 
+                print("[3] Locate a student record")  # DONE
+                print("[4] Update a student record")  # DONE
+                print("[5] Delete a student record")  # DONE
+                print("[6] See Unpaid Fees of a Student (in all of their organizations)")  # DONE
+                print("[0] Back")
+
                 choice = input("Enter a choice: ")
+
                 if choice == '1':
-                    self.create_newStudentRecord();
+                    self.create_newStudentRecord()
                     continue
 
-                if choice == '2':
-                    student_number = input("\nEnter student number (20XX-XXXXX): ")
-                    self.print_member_table_entry_contents_helper(student_number) 
-                    continue 
+                elif choice == '2':
+                    self.view_all_student_records()
+                    continue
 
-                if choice == '3':
-                    student_number = input("\nEnter student number to update (20XX-XXXX): ").strip()
-                    self.record_update_student(student_number)
+                elif choice == '3':
+                    student_number = input("\nEnter student number (20XX-XXXXX): ")
+                    self.print_member_table_entry_contents_helper(student_number)
                     continue
 
                 elif choice == '4':
-                    self.record_delete_student_harsh()
+                    student_number = input("\nEnter student number to update (20XX-XXXXX): ").strip()
+                    self.record_update_student(student_number)
                     continue
 
                 elif choice == '5':
+                    self.record_delete_student_harsh()
+                    continue
+
+                elif choice == '6':
                     self.see_unpaid_fees_of_student_in_all_orgs()
                     continue
 
                 elif choice == '0':
                     return
-                
+
                 else:
                     print("Invalid choice. Please try again.")
+
         except KeyboardInterrupt:
             print("Student view interface aborted.")
+
+    def view_all_student_records(self):
+        print("\n=========ALL STUDENT RECORDS=========")
+        try:
+            records = self.db_manager.get_all_student_records()
+            if not records:
+                print("No student records found.")
+                return
+            
+            better_names = {  # mapping the keys to more readable headers
+                'first_name': 'First Name',
+                'middle_name': 'Middle Name',
+                'last_name': 'Last Name',
+                'student_number': 'Student Number',
+                'degree_program': 'Degree Program',
+                'gender': 'Gender',
+                'graduation_status': 'Graduation Status',
+                'graduation_date': 'Graduation Date'
+            }
+
+            # Process each record for readability
+            table_data = []
+            for record in records:
+                record['graduation_status'] = "Not Yet Graduated" if record['graduation_status'] == 0 else "Graduated"
+                record['graduation_date'] = "N/A" if record['graduation_date'] is None else record['graduation_date']
+                row = [record.get(key, '') for key in better_names.keys()]
+                table_data.append(row)
+
+            headers = list(better_names.values())
+            from tabulate import tabulate
+            print(tabulate(table_data, headers=headers, tablefmt="grid"))
+            
+        except KeyboardInterrupt:
+            print("Cancelled viewing student records.")
+            return
+
 
     def see_unpaid_fees_of_student_in_all_orgs(self):
         try:  
