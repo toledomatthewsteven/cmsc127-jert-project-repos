@@ -1246,6 +1246,7 @@ class MainApplication:
                 continue 
 
             if choice == '6':
+                self.view_percentage_active_inactive_members(orgID, org_name)
                 print("6")
                 continue 
 
@@ -1449,6 +1450,38 @@ class MainApplication:
         # Print the table
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
+    # REPORT 6: View percentage of active vs inactive members of the organization for the last n sems
+    def view_percentage_active_inactive_members(self, orgID, org_name):
+        data = self.db_manager.view_percentage_active_inactive_members(orgID)
+        if not data: 
+            print(f"No membership data found in {org_name}.")
+            return
+        
+        headers = [
+            "Academic Year",
+            "Semester",
+            "Active Members",
+            "Inactive Members",
+            "Total Members",
+            "Active %",
+            "Inactive %"
+        ]
+
+        table = []
+        for row in data:
+            table.append([
+                row['academic_year'],
+                row['semester'],
+                row['active_members'],
+                row['inactive_members'],
+                row['total_members'],
+                f"{row['active_percentage']:.2f}%",
+                f"{row['inactive_percentage']:.2f}%"
+            ])
+
+        print(f"\n=== Active vs Inactive Members for '{org_name}' ===")
+        print(tabulate(table, headers=headers, tablefmt="grid"))
+
     # REPORT 9: View the member(s) of an organization with the highest debt for a given sem/AY
     def view_highest_unpaid_fees_members(self, orgID, org_name):
         sem = input("Enter semester (e.g., 1): ")
@@ -1603,7 +1636,7 @@ class MainApplication:
 
         print()
         while True:  # Committee selection with validation
-            assigned_committee = input("Enter committee to assign the new member to: ").strip()
+            assigned_committee = input("Enter the name of the committee to assign the new member to: ").strip()
             if not assigned_committee:
                 print("Error: Committee name cannot be empty.")
                 continue
