@@ -1230,15 +1230,16 @@ class MainApplication:
                 continue 
 
             if choice == '2':
-                print("2")
+                self.get_unpaid_mem(orgID)
                 continue 
 
             if choice == '3':
-                print("3")
+                self.get_execs_by_acad_year(orgID)
                 continue 
 
             if choice == '4':
-                print("4")
+                #print("4")
+                self.get_members_by_role(orgID)
                 continue 
 
             if choice == '5':
@@ -1792,6 +1793,114 @@ class MainApplication:
     #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
     #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
     #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+
+    def get_unpaid_mem(self, orgID):
+        try:
+            while True:
+                academic_year = input("Enter academic year of the executives to find (format YYYY-YYYY, e.g. 2024-2025): ").strip()
+                if len(academic_year) == 9 and academic_year[4] == '-' and \
+                academic_year[:4].isdigit() and academic_year[5:].isdigit() and \
+                int(academic_year[5:]) == int(academic_year[:4]) + 1:
+                    break
+                print("Error: Academic year must be in the format YYYY-YYYY with consecutive years.") #iiyak n me
+            while True:
+                semester = input("\nEnter the semester (1 or 2): ")
+                if semester in ["1", "2"]:
+                    break
+                print("Semester can only be 1 or 2.")
+
+            results = self.db_manager.get_unpaid_mem(orgID,academic_year,semester)
+            if len(results) == 0:
+                print("None Found.")
+                return None
+            headers = ["Student Number", "Name", "Degree Program"]
+
+            table_data = [[
+                r['student_number'],
+                r['member_name'],
+                r['degree_program']
+            ] for r in results]
+            print(f"\n========== Unpaid Members of the {semester} semester of {academic_year} ===========")
+            print(tabulate(table_data,headers,tablefmt="grid"))
+            return None
+        
+        except KeyboardInterrupt:
+           print("Cancelled Report.")
+
+    def get_execs_by_acad_year(self, orgID): #REPORT 4
+        try:  
+
+            committees = self.db_manager.get_committees_by_orgID(orgID)
+            committee_print = [r['committee_name']for r in committees] 
+            if 'Executive' not in committee_print:
+                print("\nThere is no executive committee in this org.")
+                return None
+            
+            while True:
+                academic_year = input("Enter academic year of the executives to find (format YYYY-YYYY, e.g. 2024-2025): ").strip()
+                if len(academic_year) == 9 and academic_year[4] == '-' and \
+                academic_year[:4].isdigit() and academic_year[5:].isdigit() and \
+                int(academic_year[5:]) == int(academic_year[:4]) + 1:
+                    break
+                print("Error: Academic year must be in the format YYYY-YYYY with consecutive years.") #iiyak n me
+            while True:
+                semester = input("\nEnter the semester (First or Second): ")
+                if semester in ["First", "Second"]:
+                    break
+                print("Semester can only be First or Second.")
+            
+            results = self.db_manager.get_exec_by_acad_year(orgID,academic_year,semester)
+            if len(results) == 0:
+                print("None Found.")
+                return None
+            headers = ["Student Number", "Name", "Degree Program", "Gender"]
+            table_data = [[
+                r['student_number'],
+                r['member_name'],
+                r['degree_program'],
+                r['gender']
+            ] for r in results]
+            print(f"\n========== Executive Members of the {semester} semester of {academic_year} ===========")
+            print(tabulate(table_data,headers,tablefmt="grid"))
+            return None
+        except KeyboardInterrupt:
+            print("Cancelled Report.")
+
+    def get_members_by_role(self, orgID): #REPORT 5
+        try:  
+            while True: 
+                committees = self.db_manager.get_committees_by_orgID(orgID)
+                committee_print = [r['committee_name']for r in committees] 
+                print(tabulate([[name]for name in committee_print], ["Committees"], tablefmt="outline"))
+                committee = input("\nSelect a committee to choose a role from: ")
+                if committee in committee_print:
+                    while True:
+                        roles = self.db_manager.get_committees_and_roles_by_orgID(orgID)
+                        roles = [c['committee_role'] for c in roles if c['committee_name'] == committee]
+                        print(tabulate([[name] for name in roles], [f"Roles in {committee} committee"], tablefmt="outline"))
+                        role = input("\nChoose a role from the committee: ")
+                        if role in roles:
+                            results = self.db_manager.get_members_by_role_date(orgID, role)
+                            if len(results) == 0:
+                                print("None Found.")
+                                return None
+                            headers = ["Student Number", "Name", "Degree Program", "Gender", "Academic Year of Role"]
+                            table_data = [[
+                                r['student_number'],
+                                r['member_name'],
+                                r['degree_program'],
+                                r['gender'],
+                                r['academic_year']
+                            ] for r in results]
+                            print(f"\n======== History of Members in {committee} Committee ==========")
+                            print(tabulate(table_data,headers,tablefmt="grid"))
+                            return None
+                            
+                        print("Role not found.")
+                print("\nCommittee not found.")
+        except KeyboardInterrupt:
+            print("\nCancelled report.")
+                        
 
     def get_alumni_from_date(self, orgID): #REPORT 7
         try:
