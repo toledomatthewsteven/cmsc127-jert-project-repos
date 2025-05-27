@@ -1,3 +1,18 @@
-=== JERT: CMSC 127 ST13L ===
+# 💻 JERT: Student Organization Management System
 
-#note: no longer needed to create an .env file as the connector asks for user credentials
+> A database project for CMSC 127: File Procesing & Database Systems. This is a CLI-based information system is designed to streamline the management of student organizations, their events, memberships, and finances.  
+
+> Developed by:  
+- Matthew Steven Toledo  
+- Jaden Edric Pantastico  
+- Jan Edrian Kadusale  
+
+---
+
+## 📚 Table of Contents
+
+- [About](#-about)  
+- [Features](#-features)  
+- [Usage](#-usage)  
+
+---
