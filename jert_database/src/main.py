@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import date
 from database.connector import JERTDatabaseManager
 from tabulate import tabulate
 
@@ -1236,7 +1237,8 @@ class MainApplication:
                 continue 
 
             if choice == '5':
-                print("5")
+                # print("5")
+                self.view_all_late_payments_given_sem(orgID, org_name)
                 continue 
 
             if choice == '6':
@@ -1442,6 +1444,52 @@ class MainApplication:
 
         # Print the table
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+    # REPORT 5: 
+    def view_all_late_payments_given_sem(self, orgID, org_name):
+
+        acad_year = input("Enter academic year (e.g. '2024-2025'): ").strip()
+        semester  = input("Enter semester (e.g. 1 or 'First'): ").strip()
+
+        results = self.db_manager.view_all_late_payments_given_sem(orgID, acad_year, semester)
+
+        if not results:
+            print(f"\nNo late payments found for '{org_name}' in Sem {semester}, AY {acad_year}.")
+            return
+
+        headers = [
+            "Fee ID", "Student No", "Member Name", "Amount",
+            "Due Date", "Payment Date", "Days Late", "AY", "Sem"
+        ]
+
+        table = []
+
+        for row in results:
+            due_date_str = row['due_date'].strftime("%Y-%m-%d")
+
+            pd = row['payment_date']
+
+            payment_date_str = pd.strftime("%Y-%m-%d") if pd else "N/A"
+
+            dl = row.get('days_late')
+            
+            if dl is None and pd is None:
+                dl = (date.today() - row['due_date']).days
+
+            table.append([
+                row['fee_id'],
+                row['student_number'],
+                row['member_name'],
+                f"PHP {row['amount']:.2f}",
+                due_date_str,
+                payment_date_str,
+                dl,
+                row['academic_year'],
+                row['semester']
+            ])
+
+        print(f"\n=== Late Payments for '{org_name}' (Sem {semester}, AY {acad_year}) ===")
+        print(tabulate(table, headers=headers, tablefmt="grid"))
 
     # REPORT 6: View percentage of active vs inactive members of the organization for the last n sems
     def view_percentage_active_inactive_members(self, orgID, org_name):

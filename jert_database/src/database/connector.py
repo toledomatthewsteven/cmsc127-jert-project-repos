@@ -1542,6 +1542,45 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
+    # REPORT 5: View All Late Payments Made by All Members of the Organization for a Given Sem/AY")
+    def view_all_late_payments_given_sem(self, orgID, acad_year, semester):
+
+        cursor = self.connection.cursor(dictionary=True)
+        
+        try:
+            # Removed f.payment_status = TRUE and f.paymnet_status > f.due_date 
+            query = """
+                SELECT 
+                    f.fee_id,
+                    f.amount,
+                    f.academic_year,
+                    f.semester,
+                    f.due_date,
+                    f.payment_date,
+                    DATEDIFF(f.payment_date, f.due_date) AS days_late,
+                    m.student_number,
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name
+                FROM fee f
+                JOIN member m 
+                ON f.student_number = m.student_number
+                WHERE 
+                    f.organization_id = %s
+                AND f.academic_year = %s                          
+                AND f.semester = %s
+                AND f.late_status = TRUE
+                ORDER BY f.payment_date;
+            """
+            cursor.execute(query, (orgID, acad_year, semester))
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Error fetching late payments report: {e}")
+            return None
+        finally:
+            cursor.close()
+
     # REPORT 6: View percentage of active and inactive members of an organization for the last n sems
     def view_percentage_active_inactive_members(self, orgID):
         while True:
