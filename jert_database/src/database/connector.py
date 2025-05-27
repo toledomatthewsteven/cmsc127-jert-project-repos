@@ -506,14 +506,15 @@ class JERTDatabaseManager:
             cursor.close()
 
     
-    def get_fees(self, orgID):
+    def get_fees_of_orgID(self, orgID):
         cursor = self.connection.cursor(dictionary=True)
         try:
             cursor.execute("""
                 SELECT *
                 FROM fee
+                WHERE organization_id = %s
                 ORDER BY payment_date
-            """)
+            """, (orgID,))
 
             feelist = cursor.fetchall()
             cursor.close()
