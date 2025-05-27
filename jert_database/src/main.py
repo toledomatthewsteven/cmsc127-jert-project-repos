@@ -873,7 +873,6 @@ class MainApplication:
 
             print("[1] Create an Invoice")    
             print("[2] Pay a Fee")    
-            print("[3] Show all fees")  
             print("[0] Back to main menu")
             print("")
 
@@ -884,26 +883,119 @@ class MainApplication:
                 continue 
             
             if choice == '2':
-                print("2")
+                self.pay(orgID)
                 continue
-
-            if choice == '3':
-                fees = self.db_manager.get_fees(orgID)
-                
-                if not fees:
-                    print("\nNo fees yet.")
-                else:
-                    print("\nAll Fees:")
-                    for fee in fees:
-                        print(f" + {fee}")
-                continue
-                continue
+            
             elif choice == '0':
                 break
             else:
                 print("Invalid choice. Please try again.")
 
+    
+    def create_newFeeRecord(self, orgID):
+        print("\n=== CREATING NEW FEE RECORD ===")
 
+        try: 
+            while True:
+                amount = input("Amount: ").strip()
+                if amount and amount.isdigit():
+                    amount = int(amount)
+                    if amount < 0:
+                        print("Error: Amount cannot be negative")
+                    else:
+                        break
+                elif amount and  not amount.isdigit():
+                    print("Error: Amount must be an digit")
+                else:
+                    print("Error: Amount cannot be empty.")
+
+            while True:
+                due_date_input = input("Due date (YYYY-MM-DD): ").strip()
+                try:
+                    from datetime import datetime
+                    datetime.strptime(due_date_input, "%Y-%m-%d")
+                    due_date = due_date_input
+                    break
+                except ValueError:
+                    print("Error: Please enter a valid date in YYYY-MM-DD format.")
+            
+            while True: 
+                semester = input("Semester (1 or 2): ").strip()
+                if semester and semester.isdigit():
+                    semester = int(semester)
+                    if semester < 0 and semester > 2:
+                        print("Error: Semesters can only be 1 or 2")
+                    else:
+                        break
+                elif semester and not semester.isdigit():
+                    print("Error: Semester must be an digit")
+                else:
+                    print("Error: Semester cannot be empty.")
+
+            while True: #TODO: Make Academic Year checking
+                academic_year = input("Academic Year (YYYY-YYYY): ").strip()
+                if len(academic_year) == 9 and academic_year[4] == '-':
+                    prefix = academic_year[:4]
+                    suffix = academic_year[5:]
+                    if prefix.isdigit() and suffix.isdigit():
+                        break
+                print("Error: Academic Year must be in the format XXXX-XXXX (where X is a digit).")
+
+
+            while True:
+                student_number = input("Student number (XXXX-XXXXX): ").strip()
+                
+                # Basic format check
+                if len(student_number) == 10 and student_number[4] == '-' and \
+                student_number[:4].isdigit() and student_number[5:].isdigit():
+                    
+                    if self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, "asd"):
+                        break  # Valid and found student number, exit loop
+                    else:
+                        print("ERROR: Student not found.")
+                
+                else:
+                    print("Error: Student number must be in the format XXXX-XXXXX (where X is a digit).")
+
+
+            # Create a dictionary for the member
+            fee_data = {
+                'amount': amount,
+                'due_date': due_date,
+                'semester': semester,
+                'academic_year': academic_year,
+                'student_number': student_number,
+                'organization_id': orgID
+            }
+
+            print("\nData collected successfully!") 
+
+            if self.db_manager.register_new_feeRecord(fee_data):
+                print(f"\tSuccessfully registered fee")
+                return None  # return for use
+            else:
+                print("\tFailed to register new fee record.")
+                return None
+            
+        except KeyboardInterrupt:
+            print("\nRegistration cancelled.")
+            return None
+        
+    def pay(self, orgID): #PAY requirement for FEE MANAGEMENT
+        print("\n=========PAYING FEE==========")
+        
+        try:
+            while True: 
+                feeID = input("Enter fee id to be paid: ")
+                fee = self.db_manager.get_fee_by_fee_id(orgID, feeID)
+                if fee:
+                    self.db_manager.pay_fee(orgID, feeID)
+                    print("\t Payment Successful.")
+                    return None
+                print("\tFee not found")
+        except KeyboardInterrupt:
+            print("\nPayment Cancelled")
+            return None
 
 # ============================================== COMMITTEE MANAGEMENT ===============================================
 # ============================================== COMMITTEE MANAGEMENT ===============================================
@@ -1056,11 +1148,11 @@ class MainApplication:
                 continue 
 
             if choice == '7':
-                print("7")
+                self.get_alumni_from_date(orgID)
                 continue 
 
             if choice == '8':
-                print("8")
+                self.get_amount_fee(orgID)
                 continue 
 
             if choice == '9':
@@ -1281,7 +1373,7 @@ class MainApplication:
             r['member_name'],
             r['degree_program'],
             r['gender'],
-            f"PHP {r['total_unpaid']:.2f}"
+            f"PHP {r['Debt this Semester']:.2f}"
         ] for r in results]
 
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
@@ -1592,95 +1684,80 @@ class MainApplication:
             print("\nRegistration cancelled.")
             return None
 
-    def create_newFeeRecord(self, orgID):
-        print("\n=== CREATING NEW FEE RECORD ===")
 
-        try: 
-            while True:
-                amount = input("Amount: ").strip()
-                if amount and amount.isdigit():
-                    amount = int(amount)
-                    if amount < 0:
-                        print("Error: Amount cannot be negative")
-                    else:
-                        break
-                elif amount and  not amount.isdigit():
-                    print("Error: Amount must be an digit")
-                else:
-                    print("Error: Amount cannot be empty.")
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
+    #=============================IM PUTTING ALL MY REPORTS I MADE HERE - EDRIC EDRIC EDRIC 
 
+    def get_alumni_from_date(self, orgID): #REPORT 7
+        try:
             while True:
-                due_date_input = input("Due date (YYYY-MM-DD): ").strip()
+                date_input = input("Enter date (YYYY-MM-DD): ").strip()
                 try:
                     from datetime import datetime
-                    datetime.strptime(due_date_input, "%Y-%m-%d")
-                    due_date = due_date_input
+                    datetime.strptime(date_input, "%Y-%m-%d")
+                    date = date_input
+                    break
+                except ValueError:
+                    print("Error: Please enter a valid date in YYYY-MM-DD format.")
+            result = self.db_manager.get_alumni_from_date(orgID, date)
+            headers = [
+                "Student Number",
+                "Name",
+                "Degree Program",
+                "Gender",
+                "Graduation Date",
+                "Batch Joined"
+            ]
+
+            from tabulate import tabulate
+            table_data = [[
+                r['student_number'],
+                r['member_name'],
+                r['degree_program'],
+                r['gender'],
+                r['graduation_date'],
+                r['batch_year']
+            ] for r in result]
+            print(tabulate(table_data, headers=headers, tablefmt="grid"))
+            return None
+        except KeyboardInterrupt:
+            print("Cancelling Report.")
+            return None
+
+    def get_amount_fee(self, orgID): #REPORT 8
+        print("\n=======GENERATING REPORT=======")
+
+        try:
+            while True:
+                date_input = input("Enter date (YYYY-MM-DD): ").strip()
+                try:
+                    from datetime import datetime
+                    datetime.strptime(date_input, "%Y-%m-%d")
+                    date = date_input
                     break
                 except ValueError:
                     print("Error: Please enter a valid date in YYYY-MM-DD format.")
             
-            while True: 
-                semester = input("Semester (1 or 2): ").strip()
-                if semester and semester.isdigit():
-                    semester = int(semester)
-                    if semester < 0 and semester > 2:
-                        print("Error: Semesters can only be 1 or 2")
-                    else:
-                        break
-                elif semester and not semester.isdigit():
-                    print("Error: Semester must be an digit")
-                else:
-                    print("Error: Semester cannot be empty.")
-
-            while True: #TODO: Make Academic Year checking
-                academic_year = input("Academic Year (YYYY-YYYY): ").strip()
-                if len(academic_year) == 9 and academic_year[4] == '-':
-                    prefix = academic_year[:4]
-                    suffix = academic_year[5:]
-                    if prefix.isdigit() and suffix.isdigit():
-                        break
-                print("Error: Academic Year must be in the format XXXX-XXXX (where X is a digit).")
-
-
-            while True:
-                student_number = input("Student number (XXXX-XXXXX): ").strip()
-                
-                # Basic format check
-                if len(student_number) == 10 and student_number[4] == '-' and \
-                student_number[:4].isdigit() and student_number[5:].isdigit():
-                    
-                    if self.db_manager.get_or_check_studentNumber_in_Membership(student_number, orgID, "asd"):
-                        break  # Valid and found student number, exit loop
-                    else:
-                        print("ERROR: Student not found.")
-                
-                else:
-                    print("Error: Student number must be in the format XXXX-XXXXX (where X is a digit).")
-
-
-            # Create a dictionary for the member
-            fee_data = {
-                'amount': amount,
-                'due_date': due_date,
-                'semester': semester,
-                'academic_year': academic_year,
-                'student_number': student_number,
-                'organization_id': orgID
-            }
-
-            print("\nData collected successfully!") 
-
-            if self.db_manager.register_new_feeRecord(fee_data):
-                print(f"\tSuccessfully registered fee")
-                return None  # return for use
-            else:
-                print("\tFailed to register new fee record.")
-                return None
+            result = self.db_manager.get_amount_fee(orgID, date)
             
-        except KeyboardInterrupt:
-            print("\nRegistration cancelled.")
+            print(f"\n=== FEES AS OF {date_input}'===\n")
+            headers = [
+                    "Org Name",
+                    "Paid",
+                    "Unpaid"
+                ]
+            table_data = [[
+                    r['org_name'],
+                    r['paid'],
+                    r['unpaid']] for r in result]
+            print(tabulate(table_data, headers=headers, tablefmt="grid"))
             return None
-
+        except KeyboardInterrupt:
+            print("Cancelling Report.")
+            return None
 # =============================================================
 
 
