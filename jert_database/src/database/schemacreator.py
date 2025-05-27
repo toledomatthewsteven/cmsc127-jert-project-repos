@@ -173,14 +173,15 @@ def create_member_committee_table(connection):
         cursor.execute("""
             CREATE TABLE member_committee(
                 student_number char(10),
-                committee_name varchar(30),
+                committee_name varchar(30) DEFAULT NULL,
                 organization_id int NOT NULL,
                 academic_year varchar(10),
                 semester varchar(20),
                 membership_status varchar(10),
-                committee_role varchar(30),
-                CONSTRAINT mem_comm_pk PRIMARY KEY(student_number, committee_name, organization_id, academic_year, semester)
-            )
+                committee_role varchar(30) DEFAULT NULL,
+                CONSTRAINT mem_comm_pk PRIMARY KEY(student_number, organization_id, academic_year, semester)
+            );
+
         """) 
         cursor.execute("""
             ALTER TABLE member_committee 
@@ -188,10 +189,12 @@ def create_member_committee_table(connection):
             FOREIGN KEY(student_number) REFERENCES member(student_number)
         """)
         cursor.execute("""
-            ALTER TABLE member_committee 
-            ADD CONSTRAINT memcomm_comm_fk 
-            FOREIGN KEY(committee_name, organization_id) REFERENCES committee(committee_name, organization_id)
+            ALTER TABLE member_committee
+            ADD CONSTRAINT memcomm_comm_fk
+            FOREIGN KEY(committee_name, organization_id)
+            REFERENCES committee(committee_name, organization_id)
             ON DELETE CASCADE
+            ON UPDATE CASCADE;
         """)
         
         connection.commit() 
@@ -201,6 +204,7 @@ def create_member_committee_table(connection):
         raise
     finally:
         cursor.close()
+    # ugh tinatamad na ako gumawa ng maria db alter table conditions ... xori guysm, baogong db naman
 
 
 #===============================================================

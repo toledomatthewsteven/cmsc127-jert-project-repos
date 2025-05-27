@@ -801,7 +801,6 @@ class MainApplication:
             print("\n\tFailed to assign member to a committee and role.")
             return False
 
-
     def add_member(self, orgID, org_name):
         print(f"\n========== Add Member Interface: '{org_name}' ==========")
         try: 
@@ -832,68 +831,48 @@ class MainApplication:
                 print(f"\tWarning: Student '{newMember_studentnumber}' is already registered as a member of '{org_name}'.")  
                 print("\tMember addition aborted.")
                 return
+            
+            # ================================
 
-            # committee assignment for a valid student number (found or created)
-            committee_acad_year_start = self.committee_and_role_assignment(orgID, org_name, newMember_studentnumber)
-            if not committee_acad_year_start:
-                print("Committee and role assignment failed or skipped.")
-                return
+            while True:
+                batch_year_input = input("Enter batch join-year (YYYY): ").strip()
+                if batch_year_input.isdigit() and len(batch_year_input) == 4:
+                    batch_year = int(batch_year_input)
+                    break
+                else:
+                    print("Invalid batch year. Please enter a 4-digit year.")
 
-            committee_acad_year_end = committee_acad_year_start + 1  # compute academic year end
-
-            while True: 
-                while True: # Prompt for batch year
-                    batch_year_input = input("Enter batch join-year (YYYY): ").strip()
-                    if batch_year_input.isdigit() and len(batch_year_input) == 4:
-                        batch_year = int(batch_year_input)
-                        if batch_year > committee_acad_year_end:
-                            print(f"Warning: Batch year ({batch_year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid year.")
-                        else:
-                            break
-                    else:
-                        print("Invalid batch join-year. Please enter a 4-digit year.")
-
-                # Prompt for join date
-                while True:
-                    join_date_input = input("Enter join date (YYYY-MM-DD) [default today]: ").strip()
-                    if not join_date_input:
-                        join_date = None  # default to today
-                        join_date_obj = datetime.today()
-                    else:
-                        try:
-                            join_date_obj = datetime.strptime(join_date_input, "%Y-%m-%d")
-                            join_date = join_date_input
-                        except ValueError:
-                            print("Invalid date format. Please enter a valid date in YYYY-MM-DD format.")
-                            continue  # re-prompt for join date
-                    
-                    if join_date_obj.year > committee_acad_year_end:
-                        print(f"Warning: Join date year ({join_date_obj.year}) is later than the academic year end ({committee_acad_year_end}). Please enter a valid date.")
-                        continue  # re-prompt for join date
-                    
-                    break  # valid join date obtained
-
-                if join_date_obj.year != batch_year: # check batch year and join date year consistency (batch 2025 mmust join in year 2025 itself)
-                    print(f"Warning: Join date year ({join_date_obj.year}) and batch year ({batch_year}) mismatch. Restarting input.")
-                    continue  # restart entire loop
-
-                # If all validations passed
+            while True:
+                join_date_input = input("Enter join date (YYYY-MM-DD) [default today]: ").strip()
+                if not join_date_input:
+                    join_date = None
+                    join_date_obj = datetime.today()
+                else:
+                    try:
+                        join_date_obj = datetime.strptime(join_date_input, "%Y-%m-%d")
+                        join_date = join_date_input
+                    except ValueError:
+                        print("Invalid date format. Use YYYY-MM-DD.")
+                        continue
+                if join_date_obj.year != batch_year:
+                    print(f"Warning: Join date year ({join_date_obj.year}) and batch year ({batch_year}) mismatch.")
+                    continue
                 break
 
-
-            # Register membership!!!! no need a separate divider area for it
+            # Register membership
             if self.db_manager.register_membership(newMember_studentnumber, orgID, batch_year, join_date):
                 print(f"\tMembership for student '{newMember_studentnumber}' in org '{org_name}' registered successfully!")
             else:
                 print("Failed to register membership.")
-                return #dk how to handle case where committee assignment works but membership dont :crying_laughing:
-            
+                return
+
+            self.committee_and_role_assignment(orgID, org_name, newMember_studentnumber, join_date_obj)
             print("\tMember-adding Operation Successful!")
-            return 
+            return
+
         except KeyboardInterrupt:
             print("\nRegistration cancelled.")
             return None
-
 
 # i should probably try to OOP this..... UGHHHHHH!!!!!
 # ============================================== FEES MANAGEMENT ===============================================
@@ -1578,97 +1557,94 @@ class MainApplication:
             print("\tDropping interrupted.")
 
     #  ================== MINI DIVIDER =========================
-
-    def committee_and_role_assignment(self, orgID, org_name, newMember_studentnumber):
+        
+    def committee_and_role_assignment(self, orgID, org_name, newMember_studentnumber, join_date_obj=None):
         print("\n=== COMMITTEE & ROLE ASSIGNMENT ===")
 
-        committees_with_roles = self.db_manager.get_committees_and_roles_by_orgID(orgID) # Fetch committees and roles
+        while True:
+            academic_year = input("Enter academic year for committee residency (format YYYY-YYYY, e.g. 2024-2025): ").strip()
+            if len(academic_year) == 9 and academic_year[4] == '-' and \
+                academic_year[:4].isdigit() and academic_year[5:].isdigit() and \
+                int(academic_year[5:]) == int(academic_year[:4]) + 1: 
+                
+                acad_year_start = int(academic_year[:4])
+                acad_year_end = int(academic_year[5:])
 
+                if join_date_obj: #exists
+                    join_date_year = join_date_obj.year
+                    if acad_year_end < join_date_year:
+                        print(f"\tError: Committee assignment academic year ({academic_year}) ends before join year ({join_date_year}).")
+                        continue
+                
+                break  #Valid academic year
+            else:
+                print("\tError: Academic year must be in the format YYYY-YYYY with consecutive years.")
+
+        
+        while True:
+            semester = input("Enter semester ('First' or 'Second'): ").strip().capitalize()
+            if semester in ['First', 'Second']:
+                break
+            print("\tError: Semester must be 'First' or 'Second'.")
+
+        valid_statuses = ['Active', 'Inactive', 'Expelled', 'Suspended', 'Alumni']
+        while True:
+            membership_status = input(f"Enter membership status {valid_statuses}: ").strip().capitalize()
+            if membership_status in valid_statuses:
+                break
+            print(f"\tError: Membership status must be one of {valid_statuses}.") 
+        
+        if membership_status != 'Active': #Skip committee/role if not Active
+            print(f"\tNote: Member with status '{membership_status}' will not be assigned a committee or role.")
+            if self.db_manager.register_member_under_committee_with_role(
+                newMember_studentnumber, orgID, None, None, academic_year, semester, membership_status):
+                print(f"\tSuccessfully registered member with status '{membership_status}'.")
+                return int(academic_year[:4])
+            else:
+                print("\tFailed to register member with status.")
+                return False
+
+        committees_with_roles = self.db_manager.get_committees_and_roles_by_orgID(orgID)
         if not committees_with_roles:
-            print(f"\nNo committees currently registered under '{org_name}'.")
-            print(f"\nCannot proceed with committee and role assignment.")
+            print(f"\nNo committees registered under '{org_name}'. Cannot assign committee or role.")
             return None
 
-        committee_roles_dict = {}  # Organize committees and roles for validation
+        # actually organize the committess and their roles
+        committee_roles_dict = {}
         for record in committees_with_roles:
             comm_name = record['committee_name']
             role_name = record['committee_role']
-            if comm_name not in committee_roles_dict:
-                committee_roles_dict[comm_name] = []
-            committee_roles_dict[comm_name].append(role_name)
+            committee_roles_dict.setdefault(comm_name, []).append(role_name)
 
         print("\nAvailable Committees and Their Roles:")
         for comm, roles in committee_roles_dict.items():
-            print(f" + {comm}: {', '.join(roles)}")
+            print(f" + {comm}: {', '.join(roles) if roles else 'No roles'}")
 
-        print()
-        while True:  # Committee selection with validation
-            assigned_committee = input("Enter committee to assign the new member to: ").strip()
-            if not assigned_committee:
-                print("Error: Committee name cannot be empty.")
-                continue
+        while True:
+            assigned_committee = input("Enter committee to assign the member to: ").strip()
+            if assigned_committee in committee_roles_dict:
+                break
+            print(f"Error: Committee '{assigned_committee}' not found. Please choose from the list.")
 
-            if assigned_committee not in committee_roles_dict:
-                print(f"Error: Committee '{assigned_committee}' does not exist under '{org_name}'.")
-                print("Please choose from the listed committees.")
-                continue
-            break
-
-        available_roles = committee_roles_dict[assigned_committee]  # Role selection with validation
-        if not available_roles:
-            print(f"Note: Committee '{assigned_committee}' has no predefined roles... Assigning as a general member.")
-            assigned_role = None
-        else:
+        available_roles = committee_roles_dict[assigned_committee]
+        if available_roles:
             while True:
-                assigned_role = input(f"Enter role to assign in '{assigned_committee}': ").strip()
-                if not assigned_role:
-                    print("Error: Role cannot be empty.")
-                    continue
-
-                if assigned_role not in available_roles:
-                    print(f"Error: Role '{assigned_role}' does not exist in committee '{assigned_committee}'.")
-                    print(f"Available roles: {', '.join(available_roles)}")
-                    continue
-                break
-
-        while True:
-            academic_year = input("Enter academic year of current membership (format YYYY-YYYY, e.g. 2024-2025): ").strip()
-            if len(academic_year) == 9 and academic_year[4] == '-' and \
-            academic_year[:4].isdigit() and academic_year[5:].isdigit() and \
-            int(academic_year[5:]) == int(academic_year[:4]) + 1:
-                break
-            print("Error: Academic year must be in the format YYYY-YYYY with consecutive years.") #iiyak n me
-        
-        acad_year_start = int(academic_year[:4])
-        acad_year_end = int(academic_year[5:])
-
-
-        while True:
-            semester = input("Enter semester of current membership ('First' or 'Second'): ").strip().capitalize()
-            if semester in ['First', 'Second']:
-                break
-            print("Error: Semester must be 'First' or 'Second'.")
-
-        # Membership status input
-        valid_statuses = ['Active', 'Inactive', 'Expelled', 'Suspended', 'Alumni']
-        while True:
-            membership_status = input(f"Enter membership status of current membership  {valid_statuses}: ").strip().capitalize()
-            if membership_status in valid_statuses:
-                break
-            print(f"Error: Membership status must be one of {valid_statuses}.")
-
-        # print(f"\nAssigning member '{newMember_studentnumber}' to committee '{assigned_committee}'" +
-        #     (f" with role '{assigned_role}'." if assigned_role else ".") +
-        #     f" Academic Year: {academic_year}, Semester: {semester}, Status: {membership_status}")
+                assigned_role = input(f"Enter role in '{assigned_committee}' ({', '.join(available_roles)}): ").strip()
+                if assigned_role in available_roles:
+                    break
+                print("Error: Invalid role. Please select from the available roles.")
+        else:
+            print(f"Note: Committee '{assigned_committee}' has no predefined roles.")
+            assigned_role = None
 
         if self.db_manager.register_member_under_committee_with_role(
             newMember_studentnumber, orgID, assigned_committee, assigned_role, academic_year, semester, membership_status):
-
-            print(f"\tSuccessfully assigned member to committee '{assigned_committee}' with role '{assigned_role}'!")
-            return acad_year_start
+            print(f"\tSuccessfully assigned member to '{assigned_committee}' with role '{assigned_role or 'None'}'.")
+            return int(academic_year[:4])
         else:
-            print("\n\tFailed to assign new student to a committee and role.")
+            print("\tFailed to assign member to committee and role.")
             return False
+
 
 #  ================== MINI DIVIDER =========================
 
