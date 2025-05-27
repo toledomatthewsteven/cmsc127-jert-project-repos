@@ -919,7 +919,8 @@ class MainApplication:
 
             print("[1] Create an Invoice")    
             print("[2] Pay a Fee")    
-            print('[3] View All Fee Records')
+            print("[3] Delete a Fee")   
+            print('[4] View All Fee Records')
             print("[0] Back to main menu")
             print("")
 
@@ -934,6 +935,10 @@ class MainApplication:
                 continue
 
             if choice == '3':
+                self.fees_delete(orgID)
+                continue
+
+            if choice == '4':
                 self.fees_view_all(orgID)
                 continue
             
@@ -1073,6 +1078,23 @@ class MainApplication:
             print("\nRegistration cancelled.")
             return None
         
+    def fees_delete(self, orgID): # PAY requirement for FEE MANAGEMENT
+        print("\n=========DELETING A FEE==========")
+
+        try:
+            while True:
+                feeID = input("Enter fee id to be deleted: ")
+                fee = self.db_manager.get_fee_by_fee_id(orgID, feeID)
+                if fee:
+                    self.db_manager.delete_fee(orgID, feeID)
+                    print("\Deletion Successful.")
+                    return None
+                else:
+                    print("\tFee not found.")
+        except KeyboardInterrupt:
+            print("\tDeletion Cancelled")
+            return None
+
     def pay(self, orgID): # PAY requirement for FEE MANAGEMENT
         print("\n=========PAYING FEE==========")
         
