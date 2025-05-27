@@ -134,7 +134,7 @@ class MainApplication:
                     r['fee_id'],
                     r['amount'],
                     r['due_date'].strftime("%Y-%m-%d"),  # formatting date into a more readable format
-                    "Late" if r['late_status'] else "Not Late/Already Paid"
+                    "Late" if (r['late_status']) else "Not Late"
                 ] for r in results]
 
                 print(tabulate(table_data, headers=headers, tablefmt="grid")) 
@@ -967,7 +967,7 @@ class MainApplication:
                 "Paid" if fee.get('payment_status') else "Unpaid",
                 fee.get('student_number'),
                 fee.get('organization_id'),
-                "Late" if fee.get('late_status') else "Not Late/Already Paid"
+                "Late" if (fee.get('late_status') or (fee.get('payment_status') and fee.get('payment_date') > fee.get('due_date'))) else "Not Late"
             ]
             table_data.append(row)
         
@@ -1080,7 +1080,7 @@ class MainApplication:
                             print(f"\tUsing today’s date: {payment_date}")
                             break
                         try:
-                            datetime.datetime.strptime(payment_date, "%Y-%m-%d")
+                            datetime.strptime(payment_date, "%Y-%m-%d")
                             break
                         except ValueError:
                             print("\tInvalid date format or invalid date. Please try again.")
@@ -1449,7 +1449,7 @@ class MainApplication:
     def view_all_late_payments_given_sem(self, orgID, org_name):
 
         acad_year = input("Enter academic year (e.g. '2024-2025'): ").strip()
-        semester  = input("Enter semester (e.g. 1 or 'First'): ").strip()
+        semester  = input("Enter semester (1 or 2): ").strip()
 
         results = self.db_manager.view_all_late_payments_given_sem(orgID, acad_year, semester)
 

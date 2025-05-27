@@ -1411,19 +1411,20 @@ class JERTDatabaseManager:
                 WITH latest_entry AS (
                     SELECT 
                         mc.student_number,
+                        mc.organization_id,
                         MAX(CONCAT(mc.academic_year, 
                             CASE mc.semester WHEN 'First' THEN '1' WHEN 'Second' THEN '2' ELSE '0' END)
                         ) AS max_period
                     FROM member_committee mc
                     WHERE mc.organization_id = %s AND mc.academic_year <= %s
-                    GROUP BY mc.student_number
+                    GROUP BY mc.student_number, mc.organization_id
                 ),
                 latest_exec AS (
                     SELECT 
                         mc.student_number
                     FROM member_committee mc
                     JOIN committee c ON mc.committee_name = c.committee_name AND mc.organization_id = c.organization_id
-                    JOIN latest_entry le ON mc.student_number = le.student_number
+                    JOIN latest_entry le ON mc.student_number = le.student_number AND mc.organization_id = le.organization_id
                     WHERE c.committee_name = 'Executive'
                     AND mc.organization_id = %s
                     AND mc.academic_year <= %s
@@ -1450,6 +1451,7 @@ class JERTDatabaseManager:
             
         finally:
             cursor.close()
+
 
         #  latest_entry finds each student’s most recent member_committee period (acad_year + semester) up to acad_year
         #  latest_exec checks if that latest period was in the Executive committee
@@ -1588,7 +1590,7 @@ class JERTDatabaseManager:
                     f.organization_id = %s
                 AND f.academic_year = %s                          
                 AND f.semester = %s
-                AND f.late_status = TRUE
+                AND (f.payment_status = true AND f.payment_date > f.due_date)
                 ORDER BY f.payment_date;
             """
             cursor.execute(query, (orgID, acad_year, semester))
@@ -1601,6 +1603,8 @@ class JERTDatabaseManager:
 
     # REPORT 6: View percentage of active and inactive members of an organization for the last n sems
     def view_percentage_active_inactive_members(self, orgID):
+        print("This will only include semesters tracked in this database as a reference of what semester to count backwards from.")
+
         while True:
             user_input = input("Enter how many recent semesters to include: ").strip()
             if user_input.isdigit() and int(user_input) > 0:
@@ -1611,58 +1615,104 @@ class JERTDatabaseManager:
 
         cursor = self.connection.cursor(dictionary=True)
         try:
-            query = """
-            WITH latest_status AS (
+            # Latest semester recorded for this organization
+            cursor.execute("""
+                SELECT academic_year, semester
+                FROM member_committee
+                WHERE organization_id = %s
+                ORDER BY academic_year DESC,
+                        CASE semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
+                LIMIT 1
+            """, (orgID,))
+            latest_record = cursor.fetchone()
+            if not latest_record:
+                print("No data found for this organization.")
+                return None
+
+            latest_ay = latest_record['academic_year']
+            latest_sem = latest_record['semester']
+            print(f"Latest recorded semester: {latest_ay} {latest_sem}")
+
+            # generate the last n semesters
+            selected_semesters = []
+            year, sem = latest_ay, latest_sem
+            for _ in range(n):
+                selected_semesters.append((year, sem))
+                if sem == 'First':
+                    sem = 'Second'
+                    year = str(int(year.split('-')[0]) - 1) + '-' + str(int(year.split('-')[0]))
+                else:
+                    sem = 'First'
+            # print(f"Selected semesters for tracking (most recent {n}):")
+            for ay, sem in selected_semesters:
+                print(f"  {ay} {sem}")
+
+            placeholders = ','.join(['(%s,%s)'] * len(selected_semesters))
+            semester_params = []
+            for ay, sem in selected_semesters:
+                semester_params.extend([ay, sem])
+
+            query = f"""
+            WITH selected_semesters AS (
+                SELECT academic_year, semester FROM (VALUES {placeholders}) AS t(academic_year, semester)
+            ),
+            earliest_member_semesters AS (
+                SELECT student_number, organization_id,
+                    MIN(CONCAT(academic_year, '-', CASE semester WHEN 'First' THEN '1' ELSE '2' END)) AS first_sem
+                FROM member_committee
+                GROUP BY student_number, organization_id
+            ),
+            latest_status AS (
                 SELECT
-                    mc.student_number,
-                    mc.organization_id,
-                    sl.academic_year,
-                    sl.semester,
+                    s.academic_year, s.semester, m.student_number, m.organization_id,
                     (
                         SELECT mc2.membership_status
                         FROM member_committee mc2
-                        WHERE mc2.student_number = mc.student_number
-                        AND mc2.organization_id = mc.organization_id
+                        WHERE mc2.student_number = m.student_number
+                        AND mc2.organization_id = m.organization_id
                         AND (
-                            mc2.academic_year < sl.academic_year OR
-                            (mc2.academic_year = sl.academic_year AND mc2.semester <= sl.semester)
+                            mc2.academic_year < s.academic_year OR
+                            (mc2.academic_year = s.academic_year AND mc2.semester <= s.semester)
                         )
                         ORDER BY mc2.academic_year DESC,
                                 CASE mc2.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
                         LIMIT 1
                     ) AS latest_status
-                FROM (
-                    SELECT DISTINCT student_number, organization_id FROM member_committee
-                ) mc
+                FROM selected_semesters s
                 CROSS JOIN (
-                    SELECT DISTINCT academic_year, semester
+                    SELECT DISTINCT student_number, organization_id
                     FROM member_committee
                     WHERE organization_id = %s
-                    ORDER BY academic_year DESC,
-                            CASE semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC
-                    LIMIT %s
-                ) sl
-                WHERE mc.organization_id = %s
+                ) m
+                JOIN earliest_member_semesters e
+                ON m.student_number = e.student_number AND m.organization_id = e.organization_id
+                WHERE CONCAT(s.academic_year, '-', CASE s.semester WHEN 'First' THEN '1' ELSE '2' END) >= e.first_sem
             )
             SELECT
-                sl.academic_year,
-                sl.semester,
-                SUM(latest_status = 'Active') AS active_members,
-                SUM(latest_status != 'Active') AS inactive_members,
+                s.academic_year, s.semester,
                 COUNT(*) AS total_members,
-                ROUND(SUM(latest_status = 'Active') / COUNT(*) * 100, 2) AS active_percentage,
-                ROUND(SUM(latest_status != 'Active') / COUNT(*) * 100, 2) AS inactive_percentage
-            FROM latest_status sl
-            GROUP BY sl.academic_year, sl.semester
-            ORDER BY sl.academic_year DESC,
-                    CASE sl.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
+                SUM(CASE WHEN latest_status = 'Active' THEN 1 ELSE 0 END) AS active_members,
+                SUM(CASE WHEN latest_status != 'Active' THEN 1 ELSE 0 END) AS inactive_members,
+                ROUND(SUM(CASE WHEN latest_status = 'Active' THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS active_percentage,
+                ROUND(SUM(CASE WHEN latest_status != 'Active' THEN 1 ELSE 0 END) / COUNT(*) * 100, 2) AS inactive_percentage
+            FROM latest_status s
+            GROUP BY s.academic_year, s.semester
+            ORDER BY s.academic_year DESC,
+                    CASE s.semester WHEN 'First' THEN 1 WHEN 'Second' THEN 2 ELSE 0 END DESC;
             """
-            cursor.execute(query, (orgID, n, orgID))
-            # compute the active and inactive member counts per semester by carrying forward the latest known membership status of each student.....
-            # use a cte (latest_status) to pair each student with each semester, and for each pair, it finds the most recent entry in member_committee
-            # up to and including that semester. the aggregation then counts how many are active and inactive, even if no new entry was logged for the semester.
 
+            cursor.execute(query, semester_params + [orgID])
             results = cursor.fetchall()
+
+            # asks the user for the number of recent semesters to include in the report
+            # then find the latest recorded semester for the given organization to determine where to start counting backwards
+            # it generates a list of the most recent n semesters by decrementing through the standard academic calendar
+            # for each semester in this list, it checks the membership status of each student up to that semester
+            # it also makes sure to only include a student's membership data if the semester is equal to or later than their earliest recorded participation
+            # a common table expression (cte) 'latest_status' is used to determine the latest known status for each student per semester
+            # the query aggregates the data to count total members, active members, and inactive members for each semester
+            # then it calculates the active and inactive percentages
+
             return results
 
         except Error as e:
@@ -1670,7 +1720,6 @@ class JERTDatabaseManager:
             return None
         finally:
             cursor.close()
-
 
 
     # REPORT 10: View the member(s) of an organization with the highest debt for a given sem/AY
