@@ -1365,6 +1365,109 @@ class JERTDatabaseManager:
         finally:
             cursor.close()
 
+    def get_unpaid_mem(self, orgID, acad_year, semester):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number, 
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    m.degree_program
+                FROM
+                    member m 
+                JOIN 
+                    fee f ON m.student_number = f.student_number  
+                WHERE 
+                    f.payment_status = FALSE AND 
+                    f.academic_year = %s AND
+                    f.semester = %s AND 
+                    f.organization_id = %s
+                GROUP BY
+                    m.student_number      
+            
+            """, (acad_year,semester,orgID))
+            results = cursor.fetchall()
+            return results
+        
+        except Error as e:
+            print(f"Database error trying to fetch students.")
+            return None
+        
+        finally:
+            cursor.close()
+
+    def get_exec_by_acad_year(self, orgID, acad_year, semester):
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT 
+                    m.student_number, 
+                    CASE 
+                        WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                        ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                    END AS member_name,
+                    m.degree_program, 
+                    m.gender
+                FROM
+                    member m 
+                JOIN
+                    member_committee memcom ON m.student_number = memcom.student_number
+                JOIN
+                    committee comm ON memcom.committee_name = comm.committee_name
+                WHERE 
+                    comm.organization_id = %s AND
+                    memcom.academic_year = %s AND
+                    memcom.semester = %s AND  
+                    comm.committee_name = "Executive"           
+            
+            """, (orgID, acad_year, semester))
+            results = cursor.fetchall()
+            return results
+        
+        except Error as e:
+            print(f"Database error trying to fetch students.")
+            return None
+        
+        finally:
+            cursor.close()
+
+    def get_members_by_role_date(self, orgID, role): #REPORT 5 GET ALL MEMBERS WHO BECAME A SPECIFIC ROLE IN DESCENDING ACAD YEAR
+        cursor = self.connection.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+            SELECT 
+                m.student_number,
+                CASE 
+                    WHEN m.middle_name IS NULL THEN CONCAT(m.last_name, ', ', m.first_name)
+                    ELSE CONCAT(m.last_name, ', ', m.first_name, ' ', m.middle_name)
+                END AS member_name,
+                m.degree_program, 
+                m.gender,
+                memcom.academic_year
+            FROM 
+                member m
+            JOIN 
+                member_committee memcom ON m.student_number = memcom.student_number
+            JOIN 
+                committee comm ON memcom.committee_name = comm.committee_name
+            WHERE 
+                memcom.committee_role = %s and
+                comm.organization_id = %s
+            ORDER BY
+                memcom.academic_year DESC            
+            
+            """, (role, orgID))
+            results = cursor.fetchall()
+            return results
+        except Error as e:
+            print(f"Database error trying to fetch students.")
+            return None
+        finally:
+            cursor.close()
+
     def get_alumni_from_date(self, orgID, date): #REPORT 7 GET ALUMNI BY A GIVEN DATE
         cursor = self.connection.cursor(dictionary=True)
         try:
