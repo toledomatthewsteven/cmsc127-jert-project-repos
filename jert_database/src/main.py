@@ -1855,7 +1855,7 @@ class MainApplication:
             committees = self.db_manager.get_committees_by_orgID(orgID)
             committee_print = [r['committee_name']for r in committees] 
             if 'Executive' not in committee_print:
-                print("\nThere is no executive committee in this org.")
+                print("\nThere is no 'Executive' committee in this org.")
                 return None
             
             while True:
@@ -1865,13 +1865,14 @@ class MainApplication:
                 int(academic_year[5:]) == int(academic_year[:4]) + 1:
                     break
                 print("Error: Academic year must be in the format YYYY-YYYY with consecutive years.") #iiyak n me
-            while True:
-                semester = input("\nEnter the semester (First or Second): ")
-                if semester in ["First", "Second"]:
-                    break
-                print("Semester can only be First or Second.")
+            # while True:
+            #     semester = input("\nEnter the semester (First or Second): ")
+            #     if semester in ["First", "Second"]:
+            #         break
+            #     print("Semester can only be First or Second.")
             
-            results = self.db_manager.get_exec_by_acad_year(orgID,academic_year,semester)
+            # results = self.db_manager.get_exec_by_acad_year(orgID,academic_year,semester)
+            results = self.db_manager.get_exec_by_acad_year(orgID,academic_year)
             if len(results) == 0:
                 print("None Found.")
                 return None
@@ -1882,7 +1883,7 @@ class MainApplication:
                 r['degree_program'],
                 r['gender']
             ] for r in results]
-            print(f"\n========== Executive Members of the {semester} semester of {academic_year} ===========")
+            print(f"\n========== Executive Members for AY {academic_year} ===========")
             print(tabulate(table_data,headers,tablefmt="grid"))
             return None
         except KeyboardInterrupt:
