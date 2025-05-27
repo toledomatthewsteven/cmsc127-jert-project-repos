@@ -981,16 +981,29 @@ class MainApplication:
             print("\nRegistration cancelled.")
             return None
         
-    def pay(self, orgID): #PAY requirement for FEE MANAGEMENT
+    def pay(self, orgID): # PAY requirement for FEE MANAGEMENT
         print("\n=========PAYING FEE==========")
         
         try:
-            while True: 
+            while True:
                 feeID = input("Enter fee id to be paid: ")
                 fee = self.db_manager.get_fee_by_fee_id(orgID, feeID)
                 if fee:
-                    self.db_manager.pay_fee(orgID, feeID)
-                    print("\t Payment Successful.")
+                    while True:
+                        payment_date = input("Enter payment date (YYYY-MM-DD) or press enter for today: ").strip()
+                        if not payment_date:
+                            # Automatically set today’s date
+                            payment_date = datetime.now().strftime("%Y-%m-%d")
+                            print(f"\tUsing today’s date: {payment_date}")
+                            break
+                        try:
+                            datetime.datetime.strptime(payment_date, "%Y-%m-%d")
+                            break
+                        except ValueError:
+                            print("\tInvalid date format or invalid date. Please try again.")
+                    
+                    self.db_manager.pay_fee(orgID, feeID, payment_date)
+                    print("\tPayment Successful.")
                     return None
                 print("\tFee not found")
         except KeyboardInterrupt:
@@ -1156,7 +1169,7 @@ class MainApplication:
                 continue 
 
             if choice == '9':
-                print("9")
+                # print("9")
                 self.view_highest_unpaid_fees_members(orgID, org_name)
                 continue 
 
@@ -1727,37 +1740,42 @@ class MainApplication:
             print("Cancelling Report.")
             return None
 
-    def get_amount_fee(self, orgID): #REPORT 8
+    def get_amount_fee(self, orgID): # REPORT 8 - GET TOTAL PAID/UNPAID FEES AS OF GIVEN DATE
         print("\n=======GENERATING REPORT=======")
 
         try:
             while True:
-                date_input = input("Enter date (YYYY-MM-DD): ").strip()
+                date_input = input("Enter date (YYYY-MM-DD) or press Enter for today's date: ").strip()
+                from datetime import datetime, date as dt_date
+                
+                if not date_input: # Allow default to today if no date is entered
+                    date = dt_date.today().strftime("%Y-%m-%d")
+                    print(f"Using today's date: {date}")
+                    break
+
                 try:
-                    from datetime import datetime
                     datetime.strptime(date_input, "%Y-%m-%d")
                     date = date_input
                     break
                 except ValueError:
                     print("Error: Please enter a valid date in YYYY-MM-DD format.")
-            
+
             result = self.db_manager.get_amount_fee(orgID, date)
-            
-            print(f"\n=== FEES AS OF {date_input}'===\n")
-            headers = [
-                    "Org Name",
-                    "Paid",
-                    "Unpaid"
-                ]
-            table_data = [[
-                    r['org_name'],
-                    r['paid'],
-                    r['unpaid']] for r in result]
-            print(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+            if result:
+                print(f"\n=== FEES AS OF {date} ===\n")
+                headers = ["Org Name", "Paid", "Unpaid"]
+                table_data = [[r['org_name'], r['paid'], r['unpaid']] for r in result]
+                print(tabulate(table_data, headers=headers, tablefmt="grid"))
+            else:
+                print("No data available for the specified date and organization.")
+
             return None
+
         except KeyboardInterrupt:
-            print("Cancelling Report.")
+            print("\nCancelling Report.")
             return None
+
 # =============================================================
 
 
